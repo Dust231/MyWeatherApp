@@ -1,0 +1,42 @@
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+
+// 信息卡片组件 - 新设计风格
+Item {
+    id: infoCardRoot
+
+    property string label: ""
+    property string value: "--"
+    property var themeManager: null
+
+    Rectangle {
+        anchors.fill: parent
+        radius: 10
+        color: themeManager ? themeManager.cardColor : "#FFFFFF"
+        border.color: themeManager ? themeManager.borderColor : "#B3D9F2"
+        border.width: 1
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 4
+
+            Label {
+                text: infoCardRoot.label
+                font.pixelSize: 11
+                font.bold: true
+                font.letterSpacing: 0.5
+                color: themeManager ? themeManager.subTextColor : "#5A7A8A"
+                Layout.alignment: Qt.AlignHCenter
+            }
+            Label {
+                text: infoCardRoot.value
+                font.pixelSize: 16
+                font.bold: true
+                color: themeManager ? themeManager.accentColor : "#2196F3"
+                Layout.alignment: Qt.AlignHCenter
+            }
+        }
+    }
+}
+
