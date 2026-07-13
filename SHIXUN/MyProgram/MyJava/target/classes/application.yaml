@@ -1,0 +1,12 @@
+# 服务端口配置
+server:
+  port: 8080
+
+# 和风天气API配置
+qweather:
+  # 替换为你自己在和风天气控制台申请的API Key
+  api-key: 66612b4ed25e4557b1cf5e94d8491a54
+  # 城市地理查询接口域名（使用自定义API Host）
+  geo-url: https://my3qqtq38a.re.qweatherapi.com
+  # 天气数据接口域名（使用自定义API Host）
+  dev-url: https://my3qqtq38a.re.qweatherapi.com
