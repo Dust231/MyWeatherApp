@@ -7,5 +7,7 @@
         <file>qml/WeatherIcon.qml</file>
         <file>qml/InfoCard.qml</file>
         <file>qml/ForecastCell.qml</file>
+        <file>qml/MapPage.qml</file>
+        <file>qml/map.html</file>
     </qresource>
 </RCC>

@@ -261,6 +261,10 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_uiplugin.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_uitools.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_uitools_private.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannel.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannel_private.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannelquick.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannelquick_private.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginecore.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginecore_private.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginequick.pri \
@@ -269,6 +273,10 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginequickdelegatesqml_private.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginewidgets.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginewidgets_private.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webview.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webview_private.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webviewquick.pri \
+		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webviewquick_private.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_widgets.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_widgets_private.pri \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_xml.pri \
@@ -307,29 +315,41 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 		..\MyQt\MyQt.pro \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Widgets.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebView.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineQuick.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCore.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quick.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGL.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Gui.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMeta.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModels.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlWorkerScript.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChannel.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Qml.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Network.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Positioning.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Core.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChannelQuick.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6EntryPoint.prl \
 		..\..\qt\6.8.3\msvc2022_64\mkspecs\features\build_pass.prf \
 		..\MyQt\qml.qrc \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Widgetsd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2d.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebViewd.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineQuickd.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCored.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quickd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGLd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Guid.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMetad.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModelsd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlWorkerScriptd.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChanneld.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Qmld.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Networkd.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Positioningd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Cored.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChannelQuickd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6EntryPointd.prl
 	$(QMAKE) -o Makefile ..\MyQt\MyQt.pro -spec win32-msvc "CONFIG+=debug" "CONFIG+=qml_debug"
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\features\spec_pre.prf:
@@ -509,6 +529,10 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_uiplugin.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_uitools.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_uitools_private.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannel.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannel_private.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannelquick.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webchannelquick_private.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginecore.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginecore_private.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginequick.pri:
@@ -517,6 +541,10 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginequickdelegatesqml_private.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginewidgets.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webenginewidgets_private.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webview.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webview_private.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webviewquick.pri:
+..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_webviewquick_private.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_widgets.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_widgets_private.pri:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\modules\qt_lib_xml.pri:
@@ -555,29 +583,41 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 ..\MyQt\MyQt.pro:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Widgets.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebView.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineQuick.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCore.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quick.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGL.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Gui.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMeta.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModels.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlWorkerScript.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChannel.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Qml.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Network.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6Positioning.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Core.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChannelQuick.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6EntryPoint.prl:
 ..\..\qt\6.8.3\msvc2022_64\mkspecs\features\build_pass.prf:
 ..\MyQt\qml.qrc:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Widgetsd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2d.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebViewd.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineQuickd.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCored.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quickd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGLd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Guid.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMetad.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModelsd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlWorkerScriptd.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChanneld.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Qmld.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Networkd.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6Positioningd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Cored.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebChannelQuickd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6EntryPointd.prl:
 qmake: FORCE
 	@$(QMAKE) -o Makefile ..\MyQt\MyQt.pro -spec win32-msvc "CONFIG+=debug" "CONFIG+=qml_debug"

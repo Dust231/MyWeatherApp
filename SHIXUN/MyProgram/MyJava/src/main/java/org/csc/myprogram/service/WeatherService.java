@@ -1,7 +1,9 @@
 package org.csc.myprogram.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.csc.myprogram.entity.AirQuality;
 import org.csc.myprogram.entity.AstronomyInfo;
@@ -82,11 +84,112 @@ public class WeatherService {
 
     /**
      * 1.5 城市搜索（模糊查询）
-     * 使用本地城市数据库，支持中文和拼音搜索
-     * @param keyword 搜索关键词，支持中文/拼音
+     * 使用本地城市数据库搜索，从内置坐标表补充经纬度
+     * @param keyword 搜索关键词，支持中文和拼音
      */
     public List<CityInfo> lookupCity(String keyword) {
-        return CityDatabase.searchCities(keyword);
+        // 使用本地城市数据库搜索
+        List<CityInfo> list = CityDatabase.searchCities(keyword);
+        
+        // 从内置坐标表补充经纬度
+        for (CityInfo city : list) {
+            if (city.getLon() == null || city.getLat() == null) {
+                String[] coords = getCityCoordinates(city.getName());
+                if (coords != null) {
+                    city.setLon(coords[0]);
+                    city.setLat(coords[1]);
+                }
+            }
+        }
+        
+        return list;
+    }
+
+    /**
+     * 内置中国主要城市坐标表（覆盖省会及常用城市）
+     */
+    private static final Map<String, String[]> CITY_COORDS = new HashMap<>();
+    static {
+        // 直辖市
+        CITY_COORDS.put("北京", new String[]{"116.407526", "39.904030"});
+        CITY_COORDS.put("上海", new String[]{"121.473701", "31.230416"});
+        CITY_COORDS.put("天津", new String[]{"117.190182", "39.125596"});
+        CITY_COORDS.put("重庆", new String[]{"106.504962", "29.533155"});
+        // 省会 & 主要城市
+        CITY_COORDS.put("长沙", new String[]{"112.938814", "28.228209"});
+        CITY_COORDS.put("长春", new String[]{"125.323544", "43.817072"});
+        CITY_COORDS.put("成都", new String[]{"104.065735", "30.659462"});
+        CITY_COORDS.put("广州", new String[]{"113.264385", "23.129112"});
+        CITY_COORDS.put("深圳", new String[]{"114.057868", "22.543099"});
+        CITY_COORDS.put("杭州", new String[]{"120.153576", "30.287459"});
+        CITY_COORDS.put("南京", new String[]{"118.796877", "32.060255"});
+        CITY_COORDS.put("武汉", new String[]{"114.305393", "30.593099"});
+        CITY_COORDS.put("西安", new String[]{"108.948024", "34.263161"});
+        CITY_COORDS.put("郑州", new String[]{"113.665412", "34.757975"});
+        CITY_COORDS.put("济南", new String[]{"117.000923", "36.675807"});
+        CITY_COORDS.put("沈阳", new String[]{"123.429096", "41.796767"});
+        CITY_COORDS.put("哈尔滨", new String[]{"126.534967", "45.803775"});
+        CITY_COORDS.put("昆明", new String[]{"102.832899", "25.038898"});
+        CITY_COORDS.put("福州", new String[]{"119.306239", "26.075302"});
+        CITY_COORDS.put("南昌", new String[]{"115.892151", "28.676493"});
+        CITY_COORDS.put("合肥", new String[]{"117.283042", "31.861190"});
+        CITY_COORDS.put("太原", new String[]{"112.549248", "37.857014"});
+        CITY_COORDS.put("石家庄", new String[]{"114.502461", "38.045474"});
+        CITY_COORDS.put("南宁", new String[]{"108.320004", "22.824016"});
+        CITY_COORDS.put("贵阳", new String[]{"106.713478", "26.578343"});
+        CITY_COORDS.put("兰州", new String[]{"103.823557", "36.058039"});
+        CITY_COORDS.put("呼和浩特", new String[]{"111.670801", "40.818311"});
+        CITY_COORDS.put("乌鲁木齐", new String[]{"87.617733", "43.825592"});
+        CITY_COORDS.put("拉萨", new String[]{"91.132212", "29.660361"});
+        CITY_COORDS.put("银川", new String[]{"106.278179", "38.466370"});
+        CITY_COORDS.put("西宁", new String[]{"101.778915", "36.623178"});
+        CITY_COORDS.put("海口", new String[]{"110.198293", "20.044002"});
+        CITY_COORDS.put("三亚", new String[]{"109.508268", "18.247872"});
+        CITY_COORDS.put("大连", new String[]{"121.614682", "38.914006"});
+        CITY_COORDS.put("青岛", new String[]{"120.382639", "36.067082"});
+        CITY_COORDS.put("厦门", new String[]{"118.089425", "24.479834"});
+        CITY_COORDS.put("宁波", new String[]{"121.549792", "29.868388"});
+        CITY_COORDS.put("苏州", new String[]{"120.619585", "31.299379"});
+        CITY_COORDS.put("无锡", new String[]{"120.311910", "31.491169"});
+        CITY_COORDS.put("珠海", new String[]{"113.576728", "22.271029"});
+        CITY_COORDS.put("东莞", new String[]{"113.746262", "23.046237"});
+        CITY_COORDS.put("佛山", new String[]{"113.122717", "23.028762"});
+        CITY_COORDS.put("温州", new String[]{"120.672111", "28.000575"});
+        CITY_COORDS.put("常州", new String[]{"119.946973", "31.772684"});
+        CITY_COORDS.put("徐州", new String[]{"117.184811", "34.261003"});
+        CITY_COORDS.put("烟台", new String[]{"121.391382", "37.539297"});
+        CITY_COORDS.put("潍坊", new String[]{"119.107078", "36.709250"});
+        CITY_COORDS.put("临沂", new String[]{"118.356449", "35.104672"});
+        CITY_COORDS.put("唐山", new String[]{"118.175393", "39.635113"});
+        CITY_COORDS.put("保定", new String[]{"115.482331", "38.867658"});
+        CITY_COORDS.put("泉州", new String[]{"118.589421", "24.908409"});
+        CITY_COORDS.put("嘉兴", new String[]{"120.750865", "30.765403"});
+        CITY_COORDS.put("绍兴", new String[]{"120.582112", "29.997117"});
+        CITY_COORDS.put("台州", new String[]{"121.428300", "28.661378"});
+        CITY_COORDS.put("南通", new String[]{"120.864608", "32.016212"});
+    }
+
+    /**
+     * 从内置坐标表查找城市坐标
+     * 支持城市名精确匹配和模糊匹配
+     */
+    private String[] getCityCoordinates(String cityName) {
+        if (cityName == null || cityName.isEmpty()) return null;
+        // 精确匹配
+        String[] coords = CITY_COORDS.get(cityName);
+        if (coords != null) {
+            System.out.println("[getCityCoordinates] found exact match: " + cityName + " -> " + coords[0] + "," + coords[1]);
+            return coords;
+        }
+        // 模糊匹配：遍历所有key，如果城市名包含key或key包含城市名
+        for (Map.Entry<String, String[]> entry : CITY_COORDS.entrySet()) {
+            if (cityName.contains(entry.getKey()) || entry.getKey().contains(cityName)) {
+                System.out.println("[getCityCoordinates] found fuzzy match: " + cityName + " -> " + entry.getKey());
+                return entry.getValue();
+            }
+        }
+        System.out.println("[getCityCoordinates] no match for: " + cityName);
+        return null;
     }
 
     /**

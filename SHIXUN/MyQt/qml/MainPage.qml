@@ -17,7 +17,10 @@ Page {
     property var warnings: []
     property string statusText: "输入城市名称搜索"
     property string currentCityName: ""
+    property real currentCityLon: 0
+    property real currentCityLat: 0
     property bool showSearchResults: false
+        property var hotCitiesCoordMap: ({})  // cityId -> {lon, lat} 热门城市坐标缓存
 
     ListModel {
         id: searchListModel
@@ -213,6 +216,8 @@ Page {
                         hoverEnabled: true
                         onClicked: {
                             mainPage.currentCityName = model.name + " (" + model.adm1 + ")";
+                            mainPage.currentCityLon = parseFloat(model.lon) || 0;
+                            mainPage.currentCityLat = parseFloat(model.lat) || 0;
                             queryAllWeather(model.cityId);
                             searchPopup.close();
                             searchField.text = model.name;
@@ -761,9 +766,15 @@ Page {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                searchField.forceActiveFocus();
-                                searchField.text = "";
-                                mainPage.statusText = "请输入城市名称搜索";
+                                if (mainPage.currentCityLon !== 0 || mainPage.currentCityLat !== 0) {
+                                    stackView.push("qrc:/qml/MapPage.qml", {
+                                        "cityName": mainPage.currentCityName,
+                                        "cityLon": mainPage.currentCityLon,
+                                        "cityLat": mainPage.currentCityLat
+                                    });
+                                } else {
+                                    mainPage.statusText = "请先选择一个城市";
+                                }
                             }
                         }
                     }
@@ -781,14 +792,19 @@ Page {
             // 解析预报数据
             property var forecastData: {
                 var list = [];
-                var days = ["今天", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
+                var weekDays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+                var now = new Date();
+                var todayStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
                 for (var i = 0; i < Math.min(7, mainPage.forecast.length); i++) {
                     var f = mainPage.forecast[i];
-                    var d = new Date(f.fxDate);
+                    var fxDate = f.fxDate || "";
                     var dayName;
-                    if (i === 0) dayName = "今天";
-                    else if (!isNaN(d.getTime())) dayName = days[d.getDay()];
-                    else dayName = "Day" + (i+1);
+                    if (fxDate === todayStr) dayName = "今天";
+                    else {
+                        var d = new Date(fxDate);
+                        if (!isNaN(d.getTime())) dayName = weekDays[d.getDay()];
+                        else dayName = "Day" + (i+1);
+                    }
                     list.push({
                         day: dayName,
                         tempMax: parseInt(f.tempMax) || 0,
@@ -817,9 +833,9 @@ Page {
                 return mn < 999 ? mn : 0;
             }
 
-            // 折线图区域
-            property real chartTop: 56
-            property real chartBottom: 236
+            // 折线图区域（Canvas内部坐标）
+            property real chartTop: 72
+            property real chartBottom: 260
             property real chartHeight: chartBottom - chartTop
 
             // 温度映射到Y坐标
@@ -830,17 +846,19 @@ Page {
                 return chartTop + padding + (1 - (temp - minTemp) / range) * (chartHeight - 2 * padding);
             }
 
+            Component.onCompleted: {
+                if (chartCanvas) chartCanvas.requestPaint();
+            }
+
             // 每天的列（日期+图标+温度+风力 在同一列）
             Row {
                 id: chartColumnsRow
                 width: parent.width
-                height: parent.height
 
                 Repeater {
                     model: parent.parent.forecastData
                     Column {
                         width: parent.parent.colWidth
-                        height: parent.height
                         spacing: 0
 
                         // 日期
@@ -965,24 +983,31 @@ Page {
                             color: "#4A90D9"
                             horizontalAlignment: Text.AlignHCenter
                         }
-
                     }
                 }
             }
 
             // 折线图Canvas（覆盖在列上方）
             Canvas {
+                id: chartCanvas
                 anchors.fill: parent
-                y: parent.chartTop - 4
-                height: parent.chartHeight + 8
+                z: 1
+
+                Connections {
+                    target: parent
+                    function onForecastDataChanged() { chartCanvas.requestPaint(); }
+                }
+
+                Component.onCompleted: requestPaint()
 
                 onPaint: {
                     var ctx = getContext("2d");
                     ctx.clearRect(0, 0, width, height);
                     var data = parent.forecastData;
-                    if (data.length < 2) return;
+                    if (!data || data.length < 2) return;
 
                     var cw = parent.colWidth;
+                    if (cw <= 0) return;
 
                     // 最高温度折线（橙色）
                     ctx.strokeStyle = "#E8874A";
@@ -1075,13 +1100,22 @@ Page {
 
         function onCitiesReady(citiesData) {
             searchListModel.clear();
+            // 保存热门城市坐标缓存
+            var coordMap = {};
+            for (var i = 0; i < citiesData.length; i++) {
+                var c = citiesData[i];
+                coordMap[c.id] = {lon: parseFloat(c.lon) || 0, lat: parseFloat(c.lat) || 0};
+            }
+            mainPage.hotCitiesCoordMap = coordMap;
             for (var i = 0; i < citiesData.length; i++) {
                 var m = citiesData[i];
                 searchListModel.append({
                     "name": m.name,
                     "adm1": m.adm1,
                     "adm2": m.adm2,
-                    "cityId": m.id
+                    "cityId": m.id,
+                    "lon": m.lon,
+                    "lat": m.lat
                 });
             }
             mainPage.statusText = "已加载 " + citiesData.length + " 个热门城市，点击选择";
@@ -1095,13 +1129,23 @@ Page {
                 searchPopup.close();
                 return;
             }
+            var coordMap = mainPage.hotCitiesCoordMap;
             for (var i = 0; i < citiesData.length; i++) {
                 var m = citiesData[i];
+                var lon = m.lon;
+                var lat = m.lat;
+                // 如果API未返回坐标，尝试从热门城市缓存中查找
+                if ((!lon || lon === "null" || lon === "") && coordMap[m.id]) {
+                    lon = coordMap[m.id].lon;
+                    lat = coordMap[m.id].lat;
+                }
                 searchListModel.append({
                     "name": m.name,
                     "adm1": m.adm1,
                     "adm2": m.adm2,
-                    "cityId": m.id
+                    "cityId": m.id,
+                    "lon": lon,
+                    "lat": lat
                 });
             }
             mainPage.statusText = "找到 " + citiesData.length + " 个城市，点击选择";

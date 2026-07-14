@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市地图</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; }
+        #map { width: 100%; height: 100%; }
+        .custom-marker {
+            background: transparent;
+            border: none;
+        }
+        .marker-pin {
+            width: 30px;
+            height: 42px;
+            position: relative;
+        }
+        .marker-pin svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // 解析 URL 参数
+        function getUrlParams() {
+            var params = {};
+            var query = window.location.search.substring(1);
+            var vars = query.split('&');
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split('=');
+                params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+            }
+            return params;
+        }
+
+        var params = getUrlParams();
+        var lat = parseFloat(params.lat) || 39.90499;
+        var lon = parseFloat(params.lon) || 116.40529;
+        var name = params.name || '城市';
+
+        // 初始化地图
+        var map = L.map('map', {
+            center: [lat, lon],
+            zoom: 13,
+            zoomControl: true
+        });
+
+        // 使用高德地图瓦片（国内可访问）
+        L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            subdomains: ['1', '2', '3', '4'],
+            attribution: '© 高德地图',
+            maxZoom: 18,
+            minZoom: 3
+        }).addTo(map);
+
+        // 自定义红色标记图标
+        var customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div class="marker-pin"><svg viewBox="0 0 30 42" xmlns="http://www.w3.org/2000/svg"><path d="M15 2 C20 8, 28 14, 28 20 C28 28, 22 36, 15 40 C8 36, 2 28, 2 20 C2 14, 10 8, 15 2 Z" fill="#E74C3C" stroke="#FFFFFF" stroke-width="2"/><circle cx="15" cy="18" r="5" fill="#FFFFFF"/></svg></div>',
+            iconSize: [30, 42],
+            iconAnchor: [15, 40]
+        });
+
+        // 添加标记
+        L.marker([lat, lon], { icon: customIcon })
+            .addTo(map)
+            .bindPopup('<b>' + name + '</b><br>经度: ' + lon.toFixed(4) + '°<br>纬度: ' + lat.toFixed(4) + '°')
+            .openPopup();
+    </script>
+</body>
+</html>

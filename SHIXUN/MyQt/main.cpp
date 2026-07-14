@@ -2,11 +2,13 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QtWebView>
 #include "weatherapi.h"
 
 int main(int argc, char *argv[])
 {
     QQuickStyle::setStyle("Fusion");
+    QtWebView::initialize();
     QApplication app(argc, argv);
 
     QQmlApplicationEngine engine;

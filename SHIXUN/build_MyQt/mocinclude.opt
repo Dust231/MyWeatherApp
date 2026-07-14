@@ -1,0 +1,44 @@
+-ID:/qt/6.8.3/msvc2022_64/mkspecs/win32-msvc
+-ID:/SHIXUN/MyQt
+-ID:/qt/6.8.3/msvc2022_64/include
+-ID:/qt/6.8.3/msvc2022_64/include/QtWidgets
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuickControls2
+-ID:/qt/6.8.3/msvc2022_64/include/QtLocation
+-ID:/qt/6.8.3/msvc2022_64/include/QtPositioningQuick
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuickShapes
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuickShapes/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuickShapes/6.8.3/QtQuickShapes
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuick/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuick/6.8.3/QtQuick
+-ID:/qt/6.8.3/msvc2022_64/include/QtQuick
+-ID:/qt/6.8.3/msvc2022_64/include/QtOpenGL
+-ID:/qt/6.8.3/msvc2022_64/include/QtGui/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtGui/6.8.3/QtGui
+-ID:/qt/6.8.3/msvc2022_64/include/QtGui
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlMeta/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlMeta/6.8.3/QtQmlMeta
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlMeta
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlModels/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlModels/6.8.3/QtQmlModels
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlModels
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlWorkerScript/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlWorkerScript/6.8.3/QtQmlWorkerScript
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlWorkerScript
+-ID:/qt/6.8.3/msvc2022_64/include/QtQml/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtQml/6.8.3/QtQml
+-ID:/qt/6.8.3/msvc2022_64/include/QtQml
+-ID:/qt/6.8.3/msvc2022_64/include/QtNetwork
+-ID:/qt/6.8.3/msvc2022_64/include/QtQmlIntegration
+-ID:/qt/6.8.3/msvc2022_64/include/QtPositioning
+-ID:/qt/6.8.3/msvc2022_64/include/QtCore/6.8.3
+-ID:/qt/6.8.3/msvc2022_64/include/QtCore/6.8.3/QtCore
+-ID:/qt/6.8.3/msvc2022_64/include/QtCore
+-I.
+-IC:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include
+-IC:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\ATLMFC\include
+-IC:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\VS\include
+-IC:\Program Files (x86)\Windows Kits\10\include\10.0.26100.0\ucrt
+-IC:\Program Files (x86)\Windows Kits\10\\include\10.0.26100.0\\um
+-IC:\Program Files (x86)\Windows Kits\10\\include\10.0.26100.0\\shared
+-IC:\Program Files (x86)\Windows Kits\10\\include\10.0.26100.0\\winrt
+-IC:\Program Files (x86)\Windows Kits\10\\include\10.0.26100.0\\cppwinrt
