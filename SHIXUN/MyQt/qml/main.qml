@@ -5,8 +5,8 @@ import QtQuick.Controls 2.15
 ApplicationWindow {
     id: appWindow
     visible: true
-    width: 600
-    height: 750
+    width: 960
+    height: 620
     title: "天气查询系统"
 
     // 主题管理器（全局单例）
@@ -25,6 +25,6 @@ ApplicationWindow {
 
     // 背景色随主题变化
     background: Rectangle {
-        color: themeManager.bgColor
+        color: "#212730"
     }
 }
