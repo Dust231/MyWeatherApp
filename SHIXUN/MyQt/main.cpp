@@ -4,6 +4,7 @@
 #include <QQuickStyle>
 #include <QtWebView>
 #include "weatherapi.h"
+#include "speechhelper.h"
 
 int main(int argc, char *argv[])
 {
@@ -16,6 +17,10 @@ int main(int argc, char *argv[])
     // 将 WeatherApi 注册为 QML 上下文属性，QML 中通过 weatherApi 访问
     WeatherApi api;
     engine.rootContext()->setContextProperty("weatherApi", &api);
+
+    // 将 SpeechHelper 注册为 QML 上下文属性，QML 中通过 speechHelper 访问
+    SpeechHelper speech;
+    engine.rootContext()->setContextProperty("speechHelper", &speech);
 
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
 

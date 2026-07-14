@@ -25,23 +25,34 @@ Item {
         visible: root.isSunny()
         anchors.centerIn: parent
 
-        // 光线脉冲
-        Repeater {
-            model: 8
-            Rectangle {
-                width: 4; height: 30
-                color: root.iconColor
-                opacity: 0.6
-                x: 98 + Math.cos(index * Math.PI / 4) * 70 - 2
-                y: 98 + Math.sin(index * Math.PI / 4) * 70 - 15
-                transform: Rotation {
-                    angle: index * 45
-                    origin.x: 2; origin.y: 15
-                }
-                SequentialAnimation on opacity {
-                    NumberAnimation { to: 1.0; duration: 600 }
-                    NumberAnimation { to: 0.3; duration: 600 }
-                    loops: Animation.Infinite
+        // 光线脉冲 - 整体旋转
+        Item {
+            anchors.centerIn: parent
+            width: parent.width; height: parent.height
+
+            RotationAnimation on rotation {
+                from: 0; to: 360
+                duration: 15000
+                loops: Animation.Infinite
+            }
+
+            Repeater {
+                model: 8
+                Rectangle {
+                    width: 4; height: 30
+                    color: root.iconColor
+                    opacity: 0.6
+                    x: parent.width / 2 + Math.cos(index * Math.PI / 4) * 70 - 2
+                    y: parent.height / 2 + Math.sin(index * Math.PI / 4) * 70 - 15
+                    transform: Rotation {
+                        angle: index * 45
+                        origin.x: 2; origin.y: 15
+                    }
+                    SequentialAnimation on opacity {
+                        NumberAnimation { to: 1.0; duration: 600 }
+                        NumberAnimation { to: 0.3; duration: 600 }
+                        loops: Animation.Infinite
+                    }
                 }
             }
         }

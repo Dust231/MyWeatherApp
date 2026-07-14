@@ -13,8 +13,8 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: themeManager ? themeManager.cardColor : "#FFFFFF"
-        border.color: themeManager ? themeManager.borderColor : "#B3D9F2"
+        color: themeManager ? themeManager.cardColor : "#2a3240"
+        border.color: themeManager ? themeManager.borderColor : "#3a4555"
         border.width: 1
 
         ColumnLayout {
@@ -26,14 +26,14 @@ Item {
                 font.pixelSize: 11
                 font.bold: true
                 font.letterSpacing: 0.5
-                color: themeManager ? themeManager.subTextColor : "#5A7A8A"
+                color: themeManager ? themeManager.subTextColor : "#8899AA"
                 Layout.alignment: Qt.AlignHCenter
             }
             Label {
                 text: infoCardRoot.value
                 font.pixelSize: 16
                 font.bold: true
-                color: themeManager ? themeManager.accentColor : "#2196F3"
+                color: themeManager ? themeManager.accentColor : "#4A90D9"
                 Layout.alignment: Qt.AlignHCenter
             }
         }

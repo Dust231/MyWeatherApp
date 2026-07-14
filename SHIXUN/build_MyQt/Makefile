@@ -320,6 +320,8 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCore.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quick.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGL.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6TextToSpeech.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Multimedia.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Gui.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMeta.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModels.prl \
@@ -340,6 +342,8 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCored.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quickd.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGLd.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6TextToSpeechd.prl \
+		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Multimediad.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6Guid.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMetad.prl \
 		..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModelsd.prl \
@@ -588,6 +592,8 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCore.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quick.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGL.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6TextToSpeech.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6Multimedia.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Gui.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMeta.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModels.prl:
@@ -608,6 +614,8 @@ Makefile: ..\MyQt\MyQt.pro ..\..\qt\6.8.3\msvc2022_64\mkspecs\win32-msvc\qmake.c
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6WebEngineCored.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Quickd.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6OpenGLd.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6TextToSpeechd.prl:
+..\..\qt\6.8.3\msvc2022_64\lib\Qt6Multimediad.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6Guid.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlMetad.prl:
 ..\..\qt\6.8.3\msvc2022_64\lib\Qt6QmlModelsd.prl:

@@ -20,11 +20,12 @@ ApplicationWindow {
         anchors.fill: parent
         initialItem: MainPage {
             themeManager: themeManager
+            stackView: stackView
         }
     }
 
     // 背景色随主题变化
     background: Rectangle {
-        color: "#212730"
+        color: themeManager.bgColor
     }
 }

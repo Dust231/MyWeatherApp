@@ -7,6 +7,7 @@ Page {
     id: mainPage
 
     property var themeManager: null
+    property var stackView: null
 
     // 数据模型
     property var cities: []
@@ -55,7 +56,7 @@ Page {
     }
 
     background: Rectangle {
-        color: "#212730"
+        color: themeManager ? themeManager.bgColor : "#212730"
     }
 
     // 主内容区垂直滚动
@@ -94,7 +95,7 @@ Page {
         Rectangle {
             width: parent.width
             height: 52
-            color: "#212730"
+            color: themeManager ? themeManager.bgColor : "#212730"
 
             RowLayout {
                 anchors.fill: parent
@@ -116,13 +117,13 @@ Page {
                     }
                     background: Rectangle {
                         radius: 17
-                        color: "#2a3240"
-                        border.color: "#3a4555"
+                        color: themeManager ? themeManager.cardColor : "#2a3240"
+                        border.color: themeManager ? themeManager.borderColor : "#3a4555"
                         border.width: 1
                     }
                     leftPadding: 14
-                    color: "#FFFFFF"
-                    placeholderTextColor: "#6a7585"
+                    color: themeManager ? themeManager.textColor : "#FFFFFF"
+                    placeholderTextColor: themeManager ? themeManager.subTextColor : "#6a7585"
                 }
 
                 Button {
@@ -132,7 +133,7 @@ Page {
                     font.pixelSize: 13
                     background: Rectangle {
                         radius: 17
-                        color: "#4A90D9"
+                        color: themeManager ? themeManager.accentColor : "#4A90D9"
                     }
                     contentItem: Label {
                         text: "搜索"
@@ -151,13 +152,13 @@ Page {
                     font.pixelSize: 13
                     background: Rectangle {
                         radius: 17
-                        color: "#2a3240"
-                        border.color: "#3a4555"
+                        color: themeManager ? themeManager.cardColor : "#2a3240"
+                        border.color: themeManager ? themeManager.borderColor : "#3a4555"
                         border.width: 1
                     }
                     contentItem: Label {
                         text: "热门"
-                        color: "#8899AA"
+                        color: themeManager ? themeManager.subTextColor : "#8899AA"
                         font.pixelSize: 13
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
@@ -169,18 +170,51 @@ Page {
                 }
 
                 Button {
+                    text: speechHelper.speaking ? "⏹" : "🔊"
+                    Layout.preferredHeight: 34
+                    Layout.preferredWidth: 40
+                    font.pixelSize: 16
+                    background: Rectangle {
+                        radius: 17
+                        color: speechHelper.speaking ? "#E8874A" : (themeManager ? themeManager.cardColor : "#2a3240")
+                        border.color: speechHelper.speaking ? "#E8874A" : (themeManager ? themeManager.borderColor : "#3a4555")
+                        border.width: 1
+                    }
+                    contentItem: Label {
+                        text: speechHelper.speaking ? "⏹" : "🔊"
+                        font.pixelSize: 16
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        if (speechHelper.speaking) {
+                            speechHelper.stop();
+                            mainPage.statusText = "已停止播报";
+                        } else {
+                            var txt = buildWeatherSpeech();
+                            if (txt !== "") {
+                                speechHelper.speak(txt);
+                                mainPage.statusText = "正在播报天气...";
+                            } else {
+                                mainPage.statusText = "暂无天气数据可播报";
+                            }
+                        }
+                    }
+                }
+
+                Button {
                     text: "🎨"
                     Layout.preferredHeight: 34
                     Layout.preferredWidth: 40
                     font.pixelSize: 16
                     background: Rectangle {
                         radius: 17
-                        color: "#2a3240"
-                        border.color: "#3a4555"
+                        color: themeManager ? themeManager.cardColor : "#2a3240"
+                        border.color: themeManager ? themeManager.borderColor : "#3a4555"
                         border.width: 1
                     }
                     onClicked: {
-                        StackView.view.push("qrc:/qml/ThemePage.qml", { "themeManager": themeManager });
+                        mainPage.stackView.push("qrc:/qml/ThemePage.qml", { "themeManager": themeManager, "stackView": mainPage.stackView });
                     }
                 }
             }
@@ -194,8 +228,8 @@ Page {
                   ? Math.min(searchListModel.count * 40, 200) : 0
             visible: mainPage.showSearchResults && searchListModel.count > 0
             radius: 8
-            color: "#2a3240"
-            border.color: "#3a4555"
+            color: themeManager ? themeManager.cardColor : "#2a3240"
+            border.color: themeManager ? themeManager.borderColor : "#3a4555"
             border.width: 1
             clip: true
             z: 10
@@ -211,7 +245,7 @@ Page {
                 delegate: Rectangle {
                     width: ListView.view ? ListView.view.width : parent.width
                     height: 38
-                    color: mouseArea.containsMouse ? "#3a4555" : "transparent"
+                    color: mouseArea.containsMouse ? (themeManager ? themeManager.borderColor : "#3a4555") : "transparent"
 
                     RowLayout {
                         anchors.fill: parent
@@ -223,18 +257,18 @@ Page {
                             text: model.name
                             font.pixelSize: 13
                             font.bold: true
-                            color: "#FFFFFF"
+                            color: themeManager ? themeManager.textColor : "#FFFFFF"
                         }
                         Label {
                             text: model.adm1 + " / " + model.adm2
                             font.pixelSize: 11
-                            color: "#8899AA"
+                            color: themeManager ? themeManager.subTextColor : "#8899AA"
                         }
                         Item { Layout.fillWidth: true }
                         Label {
                             text: "查看 →"
                             font.pixelSize: 11
-                            color: "#4A90D9"
+                            color: themeManager ? themeManager.accentColor : "#4A90D9"
                         }
                     }
 
@@ -364,7 +398,7 @@ Page {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "#212730"
+                color: themeManager ? themeManager.bgColor : "#212730"
 
                 Flickable {
                     id: rightFlickable
@@ -423,14 +457,14 @@ Page {
                                     font.pixelSize: 20
                                     font.bold: true
                                     font.letterSpacing: 1.2
-                                    color: "#FFFFFF"
+                                    color: themeManager ? themeManager.textColor : "#FFFFFF"
                                     Layout.fillWidth: true
                                 }
                                 Label {
                                     text: modelData.val
                                     font.pixelSize: 22
                                     font.bold: true
-                                    color: "#FFFFFF"
+                                    color: themeManager ? themeManager.textColor : "#FFFFFF"
                                     Layout.alignment: Qt.AlignRight
                                 }
                             }
@@ -471,7 +505,7 @@ Page {
                                     width: 80
                                     height: 140
                                     radius: 10
-                                    color: index === 0 ? "#FFFFFF" : "#2a3240"
+                                    color: index === 0 ? (themeManager ? themeManager.accentLight : "#FFFFFF") : (themeManager ? themeManager.cardColor : "#2a3240")
 
                                     Column {
                                         anchors.centerIn: parent
@@ -713,7 +747,7 @@ Page {
                                         Label {
                                             text: modelData.day
                                             font.pixelSize: 15
-                                            color: index === 0 ? "#333333" : "#8899AA"
+                                            color: index === 0 ? (themeManager ? themeManager.textColor : "#333333") : (themeManager ? themeManager.subTextColor : "#8899AA")
                                             anchors.horizontalCenter: parent.horizontalCenter
                                         }
 
@@ -722,7 +756,7 @@ Page {
                                             text: modelData.tempMax + "°C"
                                             font.pixelSize: 16
                                             font.bold: true
-                                            color: index === 0 ? "#333333" : "#FFFFFF"
+                                            color: index === 0 ? (themeManager ? themeManager.textColor : "#333333") : (themeManager ? themeManager.textColor : "#FFFFFF")
                                             anchors.horizontalCenter: parent.horizontalCenter
                                         }
                                     }
@@ -769,8 +803,8 @@ Page {
 
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: "#4FC3F7" }
-                            GradientStop { position: 1.0; color: "#5B6BBF" }
+                            GradientStop { position: 0.0; color: themeManager ? themeManager.accentColor : "#4FC3F7" }
+                            GradientStop { position: 1.0; color: themeManager ? themeManager.iconColor : "#5B6BBF" }
                         }
 
                         RowLayout {
@@ -797,7 +831,8 @@ Page {
                                     stackView.push("qrc:/qml/MapPage.qml", {
                                         "cityName": mainPage.currentCityName,
                                         "cityLon": mainPage.currentCityLon,
-                                        "cityLat": mainPage.currentCityLat
+                                        "cityLat": mainPage.currentCityLat,
+                                        "themeManager": themeManager
                                     });
                                 } else {
                                     mainPage.statusText = "请先选择一个城市";
@@ -895,7 +930,7 @@ Page {
                             text: modelData.day
                             font.pixelSize: 13
                             font.bold: true
-                            color: index === 0 ? "#4FC3F7" : "#8899AA"
+                            color: index === 0 ? (themeManager ? themeManager.accentLight : "#4FC3F7") : (themeManager ? themeManager.subTextColor : "#8899AA")
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -911,7 +946,7 @@ Page {
                                     var ctx = getContext("2d");
                                     ctx.clearRect(0, 0, width, height);
                                     var t = modelData.textDay;
-                                    var col = "#4A90D9";
+                                    var col = themeManager ? themeManager.accentColor : "#4A90D9";
                                     ctx.strokeStyle = col;
                                     ctx.fillStyle = col;
                                     ctx.lineWidth = 1.5;
@@ -990,7 +1025,7 @@ Page {
                             text: modelData.tempMax + "°C"
                             font.pixelSize: 13
                             font.bold: true
-                            color: "#E8874A"
+                            color: themeManager ? themeManager.accentColor : "#E8874A"
                             horizontalAlignment: Text.AlignHCenter
                         }
 
@@ -1007,7 +1042,7 @@ Page {
                             text: modelData.tempMin + "°C"
                             font.pixelSize: 13
                             font.bold: true
-                            color: "#4A90D9"
+                            color: themeManager ? themeManager.accentColor : "#4A90D9"
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -1095,8 +1130,8 @@ Page {
                 anchors.leftMargin: 16
                 anchors.rightMargin: 16
                 radius: 16
-                color: "#2a3240"
-                border.color: "#3a4555"
+                color: themeManager ? themeManager.cardColor : "#2a3240"
+                border.color: themeManager ? themeManager.borderColor : "#3a4555"
                 border.width: 1
 
                 ColumnLayout {
@@ -1111,7 +1146,7 @@ Page {
                             text: "空气质量"
                             font.pixelSize: 16
                             font.bold: true
-                            color: "#FFFFFF"
+                            color: themeManager ? themeManager.textColor : "#FFFFFF"
                             font.letterSpacing: 1
                         }
                         Item { Layout.fillWidth: true }
@@ -1119,14 +1154,14 @@ Page {
                             text: mainPage.airQuality.aqi ? ("AQI " + mainPage.airQuality.aqi) : ""
                             font.pixelSize: 14
                             font.bold: true
-                            color: "#4CAF50"
+                            color: themeManager ? themeManager.accentColor : "#4CAF50"
                             visible: !!mainPage.airQuality.aqi
                         }
                         Rectangle {
                             width: aqiTagLabel.width + 16
                             height: 24
                             radius: 12
-                            color: "#4CAF50"
+                            color: themeManager ? themeManager.accentColor : "#4CAF50"
                             visible: !!mainPage.airQuality.category
                             Label {
                                 id: aqiTagLabel
@@ -1161,18 +1196,18 @@ Page {
                                 Label {
                                     text: modelData.label
                                     font.pixelSize: 11
-                                    color: "#6a7585"
+                                    color: themeManager ? themeManager.subTextColor : "#6a7585"
                                 }
                                 Label {
                                     text: mainPage.airQuality[modelData.key] || "--"
                                     font.pixelSize: 18
                                     font.bold: true
-                                    color: "#FFFFFF"
+                                    color: themeManager ? themeManager.textColor : "#FFFFFF"
                                 }
                                 Label {
                                     text: modelData.unit
                                     font.pixelSize: 10
-                                    color: "#6a7585"
+                                    color: themeManager ? themeManager.subTextColor : "#6a7585"
                                 }
                             }
                         }
@@ -1194,13 +1229,13 @@ Page {
                         Label {
                             text: "空气质量数据暂不可用"
                             font.pixelSize: 14
-                            color: "#6a7585"
+                            color: themeManager ? themeManager.subTextColor : "#6a7585"
                             Layout.alignment: Qt.AlignHCenter
                         }
                         Label {
                             text: "当前 API 套餐不支持空气质量查询"
                             font.pixelSize: 11
-                            color: "#4a5565"
+                            color: themeManager ? themeManager.subTextColor : "#4a5565"
                             Layout.alignment: Qt.AlignHCenter
                         }
                     }
@@ -1220,8 +1255,8 @@ Page {
                 anchors.leftMargin: 16
                 anchors.rightMargin: 16
                 radius: 16
-                color: "#2a3240"
-                border.color: "#3a4555"
+                color: themeManager ? themeManager.cardColor : "#2a3240"
+                border.color: themeManager ? themeManager.borderColor : "#3a4555"
                 border.width: 1
 
                 ColumnLayout {
@@ -1236,14 +1271,14 @@ Page {
                             text: "降水预报"
                             font.pixelSize: 16
                             font.bold: true
-                            color: "#FFFFFF"
+                            color: themeManager ? themeManager.textColor : "#FFFFFF"
                             font.letterSpacing: 1
                         }
                         Item { Layout.fillWidth: true }
                         Label {
                             text: "当前降水 " + (mainPage.nowWeather.precip || "0") + " mm"
                             font.pixelSize: 12
-                            color: "#6a7585"
+                            color: themeManager ? themeManager.subTextColor : "#6a7585"
                         }
                     }
 
@@ -1276,7 +1311,7 @@ Page {
                                         text: modelData.precip > 0 ? modelData.precip + "" : ""
                                         font.pixelSize: 10
                                         font.bold: true
-                                        color: "#4FC3F7"
+                                        color: themeManager ? themeManager.accentLight : "#4FC3F7"
                                     }
 
                                     // 柱状条（底部对齐，向上生长）
@@ -1292,8 +1327,8 @@ Page {
                                         anchors.bottom: dayLabel.top
                                         anchors.bottomMargin: 4
                                         gradient: Gradient {
-                                            GradientStop { position: 0.0; color: "#4FC3F7" }
-                                            GradientStop { position: 1.0; color: "#4A90D9" }
+                                            GradientStop { position: 0.0; color: themeManager ? themeManager.accentLight : "#4FC3F7" }
+                                            GradientStop { position: 1.0; color: themeManager ? themeManager.accentColor : "#4A90D9" }
                                         }
                                     }
 
@@ -1305,7 +1340,7 @@ Page {
                                         text: modelData.day
                                         font.pixelSize: 12
                                         font.bold: true
-                                        color: index === 0 ? "#4FC3F7" : "#8899AA"
+                                        color: index === 0 ? (themeManager ? themeManager.accentLight : "#4FC3F7") : (themeManager ? themeManager.subTextColor : "#8899AA")
                                     }
                                 }
                             }
@@ -1329,13 +1364,13 @@ Page {
                         Label {
                             text: "未来7天暂无降水数据"
                             font.pixelSize: 14
-                            color: "#6a7585"
+                            color: themeManager ? themeManager.subTextColor : "#6a7585"
                             Layout.alignment: Qt.AlignHCenter
                         }
                         Label {
                             text: "当前 API 套餐可能不支持降水预报查询"
                             font.pixelSize: 11
-                            color: "#4a5565"
+                            color: themeManager ? themeManager.subTextColor : "#4a5565"
                             Layout.alignment: Qt.AlignHCenter
                         }
                     }
@@ -1348,8 +1383,8 @@ Page {
                         Item { Layout.fillWidth: true }
                         RowLayout {
                             spacing: 4
-                            Rectangle { width: 10; height: 10; radius: 2; color: "#4FC3F7" }
-                            Label { text: "降水量 (mm)"; font.pixelSize: 10; color: "#6a7585" }
+                            Rectangle { width: 10; height: 10; radius: 2; color: themeManager ? themeManager.accentLight : "#4FC3F7" }
+                            Label { text: "降水量 (mm)"; font.pixelSize: 10; color: themeManager ? themeManager.subTextColor : "#6a7585" }
                         }
                     }
                 }
@@ -1366,7 +1401,7 @@ Page {
         width: parent.width
         text: mainPage.statusText
         font.pixelSize: 12
-        color: "#6a7585"
+        color: themeManager ? themeManager.subTextColor : "#6a7585"
         horizontalAlignment: Text.AlignHCenter
     }
 
@@ -1477,6 +1512,60 @@ Page {
         function onErrorOccurred(errorMsg) {
             mainPage.statusText = "请求失败: " + errorMsg;
         }
+    }
+
+    // 语音播报状态监听
+    Connections {
+        target: speechHelper
+        function onSpeakingChanged() {
+            if (!speechHelper.speaking) {
+                // 播报结束后，如果之前有城市数据，显示已更新状态
+                if (mainPage.nowWeather && mainPage.nowWeather.temp) {
+                    mainPage.statusText = "天气数据已更新";
+                }
+            }
+        }
+    }
+
+    // ===== 构建语音播报文本 =====
+    function buildWeatherSpeech() {
+        if (!mainPage.nowWeather || !mainPage.nowWeather.temp) return "";
+        var cityName = mainPage.currentCityName || "当前城市";
+        var text = cityName + "天气播报。";
+        // 实时天气
+        text += "当前天气" + (mainPage.nowWeather.text || "未知") + "，";
+        text += "气温" + (mainPage.nowWeather.temp || "未知") + "摄氏度，";
+        text += "体感温度" + (mainPage.nowWeather.feelsLike || "未知") + "摄氏度，";
+        text += "湿度" + (mainPage.nowWeather.humidity || "未知") + "%，";
+        text += (mainPage.nowWeather.windDir || "") + (mainPage.nowWeather.windScale || "") + "级风，";
+        // 空气质量
+        if (mainPage.airQuality && mainPage.airQuality.aqi) {
+            text += "空气质量" + (mainPage.airQuality.category || "") + "，";
+            text += "AQI指数" + mainPage.airQuality.aqi + "，";
+        }
+        // 未来三天预报
+        if (mainPage.forecast && mainPage.forecast.length > 0) {
+            text += "未来三天天气预报：";
+            var weekDays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+            var count = Math.min(3, mainPage.forecast.length);
+            for (var i = 0; i < count; i++) {
+                var f = mainPage.forecast[i];
+                var d = new Date(f.fxDate);
+                var dayName = isNaN(d.getTime()) ? "第" + (i+1) + "天" : weekDays[d.getDay()];
+                text += dayName + "，" + (f.textDay || "未知") + "，";
+                text += "最高" + f.tempMax + "摄氏度，最低" + f.tempMin + "摄氏度。";
+            }
+        }
+        // 预警信息
+        if (mainPage.warnings && mainPage.warnings.length > 0) {
+            text += "气象预警：";
+            for (var i = 0; i < mainPage.warnings.length; i++) {
+                var w = mainPage.warnings[i];
+                text += w.title + "，";
+            }
+        }
+        text += "播报完毕，祝您出行愉快。";
+        return text;
     }
 
     Component.onCompleted: {

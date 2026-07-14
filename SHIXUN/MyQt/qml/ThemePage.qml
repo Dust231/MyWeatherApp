@@ -7,9 +7,10 @@ Page {
     id: themePage
 
     property var themeManager: null
+    property var stackView: null
 
     background: Rectangle {
-        color: themeManager ? themeManager.bgColor : "#E8F4FD"
+        color: themeManager ? themeManager.bgColor : "#212730"
     }
 
     ColumnLayout {
@@ -25,7 +26,7 @@ Page {
             Button {
                 text: "← 返回"
                 Layout.preferredHeight: 36
-                onClicked: StackView.view.pop()
+                onClicked: stackView.pop()
             }
 
             Label {

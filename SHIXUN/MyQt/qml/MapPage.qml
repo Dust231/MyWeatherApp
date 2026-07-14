@@ -10,9 +10,10 @@ Page {
     property string cityName: ""
     property real cityLon: 0
     property real cityLat: 0
+    property var themeManager: null
 
     background: Rectangle {
-        color: "#212730"
+        color: themeManager ? themeManager.bgColor : "#212730"
     }
 
     ColumnLayout {
@@ -23,7 +24,7 @@ Page {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 52
-            color: "#212730"
+            color: themeManager ? themeManager.bgColor : "#212730"
 
             RowLayout {
                 anchors.fill: parent
@@ -36,13 +37,13 @@ Page {
                     font.pixelSize: 14
                     background: Rectangle {
                         radius: 8
-                        color: parent.hovered ? "#3a4555" : "#2a3240"
-                        border.color: "#3a4555"
+                        color: parent.hovered ? (themeManager ? themeManager.borderColor : "#3a4555") : (themeManager ? themeManager.cardColor : "#2a3240")
+                        border.color: themeManager ? themeManager.borderColor : "#3a4555"
                         border.width: 1
                     }
                     contentItem: Label {
                         text: parent.text
-                        color: "#FFFFFF"
+                        color: themeManager ? themeManager.textColor : "#FFFFFF"
                         font.pixelSize: 14
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
@@ -54,7 +55,7 @@ Page {
                     text: "📍 " + mapPage.cityName
                     font.pixelSize: 18
                     font.bold: true
-                    color: "#FFFFFF"
+                    color: themeManager ? themeManager.textColor : "#FFFFFF"
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -87,7 +88,7 @@ Page {
                 anchors.margins: 12
                 height: 36
                 radius: 8
-                color: "#2a3240"
+                color: themeManager ? themeManager.cardColor : "#2a3240"
                 opacity: 0.9
 
                 RowLayout {
@@ -98,13 +99,13 @@ Page {
                     Label {
                         text: "经度: " + mapPage.cityLon.toFixed(4) + "°"
                         font.pixelSize: 12
-                        color: "#8899AA"
+                        color: themeManager ? themeManager.subTextColor : "#8899AA"
                     }
                     Item { Layout.fillWidth: true }
                     Label {
                         text: "纬度: " + mapPage.cityLat.toFixed(4) + "°"
                         font.pixelSize: 12
-                        color: "#8899AA"
+                        color: themeManager ? themeManager.subTextColor : "#8899AA"
                     }
                 }
             }

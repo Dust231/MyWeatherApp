@@ -97,10 +97,18 @@ public class WeatherService {
         // 使用本地城市数据库搜索
         List<CityInfo> list = CityDatabase.searchCities(keyword);
         
-        // 从内置坐标表补充经纬度
+        // 从内置坐标表补充经纬度（优先按城市ID查找，再按城市名查找）
         for (CityInfo city : list) {
             if (city.getLon() == null || city.getLat() == null) {
-                String[] coords = getCityCoordinates(city.getName());
+                // 先尝试按城市ID查找
+                String[] coords = getCoordsByCityId(city.getId());
+                if (coords != null) {
+                    city.setLon(coords[1]);  // lon
+                    city.setLat(coords[0]);  // lat
+                    continue;
+                }
+                // 再尝试按城市名查找
+                coords = getCityCoordinates(city.getName());
                 if (coords != null) {
                     city.setLon(coords[0]);
                     city.setLat(coords[1]);
@@ -195,6 +203,21 @@ public class WeatherService {
             }
         }
         System.out.println("[getCityCoordinates] no match for: " + cityName);
+        return null;
+    }
+
+    /**
+     * 根据城市ID从CITY_ID_COORDS获取坐标（供lookupCity使用）
+     */
+    private String[] getCoordsByCityId(String cityId) {
+        if (cityId == null || cityId.isEmpty()) return null;
+        String[] coords = CITY_ID_COORDS.get(cityId);
+        if (coords != null) return coords;
+        // 回退到省级
+        if (cityId.length() == 9) {
+            String provCode = cityId.substring(3, 5);
+            return PROVINCE_COORDS.get(provCode);
+        }
         return null;
     }
 
@@ -443,16 +466,75 @@ public class WeatherService {
 
     /**
      * 根据城市ID获取经纬度
-     * 优先从内置坐标表查找，其次尝试从cityId解析
+     * 优先精确匹配，区级ID未找到时回退到市级ID（截取前7位）
+     * 市级也未找到时回退到省级（省会）坐标
+     * 和风城市ID规则：101 + 省代码(2位) + 市代码(2位) + 县/区代码(2位)
+     * 例如：101010300(朝阳) → 回退到 101010100(北京)
+     *       101090901(邢台) → 回退到省级 101090101(石家庄)
      */
     private String[] getCityLatLon(String cityId) {
         if (cityId == null || cityId.isEmpty()) return null;
-        // 先尝试从内置坐标表通过城市名反查（这里直接用cityId前缀匹配）
-        // 和风城市ID规则：101 + 省代码(2位) + 市代码(2位) + 县代码(2位)
-        // 直接用常见城市ID映射
+        // 1. 精确匹配
         String[] coords = CITY_ID_COORDS.get(cityId);
         if (coords != null) return coords;
+        // 2. 区级ID回退到市级：截取前7位（101 + 省2位 + 市2位 + 01）
+        if (cityId.length() == 9) {
+            String parentCityId = cityId.substring(0, 7) + "01";
+            coords = CITY_ID_COORDS.get(parentCityId);
+            if (coords != null) {
+                System.out.println("[getCityLatLon] 区级 " + cityId + " 回退到市级 " + parentCityId);
+                return coords;
+            }
+            // 3. 市级也未找到，回退到省级（省会）坐标
+            String provCode = cityId.substring(3, 5);
+            coords = PROVINCE_COORDS.get(provCode);
+            if (coords != null) {
+                System.out.println("[getCityLatLon] 城市 " + cityId + " 回退到省级(省会)坐标, provCode=" + provCode);
+                return coords;
+            }
+        }
         return null;
+    }
+
+    /**
+     * 省级代码到省会坐标的映射（用于小城市回退）
+     * 覆盖全国31个省级行政区
+     */
+    private static final Map<String, String[]> PROVINCE_COORDS = new HashMap<>();
+    static {
+        PROVINCE_COORDS.put("01", new String[]{"39.904", "116.407"});  // 北京
+        PROVINCE_COORDS.put("02", new String[]{"31.230", "121.474"});  // 上海
+        PROVINCE_COORDS.put("03", new String[]{"39.126", "117.190"});  // 天津
+        PROVINCE_COORDS.put("04", new String[]{"29.533", "106.505"});  // 重庆
+        PROVINCE_COORDS.put("05", new String[]{"45.804", "126.535"});  // 黑龙江
+        PROVINCE_COORDS.put("06", new String[]{"43.817", "125.324"});  // 吉林
+        PROVINCE_COORDS.put("07", new String[]{"41.797", "123.429"});  // 辽宁
+        PROVINCE_COORDS.put("08", new String[]{"40.818", "111.671"});  // 内蒙古
+        PROVINCE_COORDS.put("09", new String[]{"38.045", "114.502"});  // 河北
+        PROVINCE_COORDS.put("10", new String[]{"37.857", "112.549"});  // 山西
+        PROVINCE_COORDS.put("11", new String[]{"34.263", "108.948"});  // 陕西
+        PROVINCE_COORDS.put("12", new String[]{"36.676", "117.001"});  // 山东
+        PROVINCE_COORDS.put("13", new String[]{"43.826", "87.618"});   // 新疆
+        PROVINCE_COORDS.put("14", new String[]{"29.660", "91.132"});   // 西藏
+        PROVINCE_COORDS.put("15", new String[]{"36.623", "101.779"});  // 青海
+        PROVINCE_COORDS.put("16", new String[]{"36.058", "103.824"});  // 甘肃
+        PROVINCE_COORDS.put("17", new String[]{"38.466", "106.278"});  // 宁夏
+        PROVINCE_COORDS.put("18", new String[]{"34.758", "113.665"});  // 河南
+        PROVINCE_COORDS.put("19", new String[]{"32.060", "118.797"});  // 江苏
+        PROVINCE_COORDS.put("20", new String[]{"30.287", "120.154"});  // 浙江
+        PROVINCE_COORDS.put("21", new String[]{"31.861", "117.283"});  // 安徽
+        PROVINCE_COORDS.put("22", new String[]{"30.593", "114.305"});  // 湖北
+        PROVINCE_COORDS.put("23", new String[]{"28.228", "112.939"});  // 湖南
+        PROVINCE_COORDS.put("24", new String[]{"28.676", "115.892"});  // 江西
+        PROVINCE_COORDS.put("25", new String[]{"30.659", "104.066"});  // 四川
+        PROVINCE_COORDS.put("26", new String[]{"26.578", "106.713"});  // 贵州
+        PROVINCE_COORDS.put("27", new String[]{"25.039", "102.833"});  // 云南
+        PROVINCE_COORDS.put("28", new String[]{"23.129", "113.264"});  // 广东
+        PROVINCE_COORDS.put("29", new String[]{"22.824", "108.320"});  // 广西
+        PROVINCE_COORDS.put("30", new String[]{"20.044", "110.198"});  // 海南
+        PROVINCE_COORDS.put("31", new String[]{"26.075", "119.306"});  // 福建
+        PROVINCE_COORDS.put("32", new String[]{"25.039", "102.833"});  // 云南(备用)
+        PROVINCE_COORDS.put("33", new String[]{"22.824", "108.320"});  // 广西(备用)
     }
 
     /**

@@ -9,65 +9,65 @@ QtObject {
     property int currentIndex: 0
 
     // 主题名称列表
-    readonly property var themeNames: ["天空蓝", "森林绿", "暖阳橙", "薰衣草紫", "深夜黑"]
+    readonly property var themeNames: ["深空灰", "森林绿", "暖阳橙", "薰衣草紫", "深夜黑"]
 
     // 所有主题配色数据
     readonly property var themes: [
-        // 0: 天空蓝
+        // 0: 深空灰（默认 - 暗色基调）
         {
-            "name": "天空蓝",
-            "bgColor":        "#E8F4FD",
-            "cardColor":      "#FFFFFF",
-            "textColor":      "#1A2A3A",
-            "subTextColor":   "#5A7A8A",
-            "accentColor":    "#2196F3",
-            "accentLight":    "#BBDEFB",
-            "iconColor":      "#1976D2",
-            "borderColor":    "#B3D9F2",
-            "tabActiveColor": "#2196F3",
-            "tabInactiveColor": "#90CAF9"
+            "name": "深空灰",
+            "bgColor":        "#212730",
+            "cardColor":      "#2a3240",
+            "textColor":      "#FFFFFF",
+            "subTextColor":   "#8899AA",
+            "accentColor":    "#4A90D9",
+            "accentLight":    "#4FC3F7",
+            "iconColor":      "#4A90D9",
+            "borderColor":    "#3a4555",
+            "tabActiveColor": "#4A90D9",
+            "tabInactiveColor": "#5a6a7a"
         },
         // 1: 森林绿
         {
             "name": "森林绿",
-            "bgColor":        "#E8F5E9",
-            "cardColor":      "#FFFFFF",
-            "textColor":      "#1B3A1B",
-            "subTextColor":   "#5A7A5A",
+            "bgColor":        "#1a2e1a",
+            "cardColor":      "#243524",
+            "textColor":      "#E8F5E9",
+            "subTextColor":   "#A5D6A7",
             "accentColor":    "#4CAF50",
-            "accentLight":    "#C8E6C9",
-            "iconColor":      "#388E3C",
-            "borderColor":    "#A5D6A7",
+            "accentLight":    "#81C784",
+            "iconColor":      "#66BB6A",
+            "borderColor":    "#2E7D32",
             "tabActiveColor": "#4CAF50",
-            "tabInactiveColor": "#A5D6A7"
+            "tabInactiveColor": "#5a8a5a"
         },
         // 2: 暖阳橙
         {
             "name": "暖阳橙",
-            "bgColor":        "#FFF3E0",
-            "cardColor":      "#FFFFFF",
-            "textColor":      "#3A2A1A",
-            "subTextColor":   "#8A7A6A",
+            "bgColor":        "#2d2016",
+            "cardColor":      "#3a2a1e",
+            "textColor":      "#FFF3E0",
+            "subTextColor":   "#FFB74D",
             "accentColor":    "#FF9800",
-            "accentLight":    "#FFE0B2",
-            "iconColor":      "#F57C00",
-            "borderColor":    "#FFCC80",
+            "accentLight":    "#FFB74D",
+            "iconColor":      "#FFA726",
+            "borderColor":    "#E65100",
             "tabActiveColor": "#FF9800",
-            "tabInactiveColor": "#FFB74D"
+            "tabInactiveColor": "#8a6a4a"
         },
         // 3: 薰衣草紫
         {
             "name": "薰衣草紫",
-            "bgColor":        "#F3E5F5",
-            "cardColor":      "#FFFFFF",
-            "textColor":      "#2A1A3A",
-            "subTextColor":   "#7A6A8A",
+            "bgColor":        "#221a2e",
+            "cardColor":      "#2d2440",
+            "textColor":      "#F3E5F5",
+            "subTextColor":   "#CE93D8",
             "accentColor":    "#9C27B0",
-            "accentLight":    "#E1BEE7",
-            "iconColor":      "#7B1FA2",
-            "borderColor":    "#CE93D8",
+            "accentLight":    "#BA68C8",
+            "iconColor":      "#AB47BC",
+            "borderColor":    "#6A1B9A",
             "tabActiveColor": "#9C27B0",
-            "tabInactiveColor": "#CE93D8"
+            "tabInactiveColor": "#7a5a8a"
         },
         // 4: 深夜黑
         {
