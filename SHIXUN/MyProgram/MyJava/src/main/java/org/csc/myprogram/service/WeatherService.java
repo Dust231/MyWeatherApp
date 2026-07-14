@@ -42,6 +42,12 @@ public class WeatherService {
     @Value("${qweather.dev-url}")
     private String devUrl;
 
+    @Value("${qweather.open-meteo-air-url}")
+    private String openMeteoAirUrl;
+
+    @Value("${qweather.open-meteo-forecast-url}")
+    private String openMeteoForecastUrl;
+
     // 构造器注入
     public WeatherService(RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
@@ -234,55 +240,268 @@ public class WeatherService {
                 .toUriString();
 
         JsonNode root = doGetRequest(url);
+        System.out.println("[get7DayForecast] URL: " + url);
+        System.out.println("[get7DayForecast] response: " + root.toString());
         if (!"200".equals(root.get("code").asText())) {
             return list;
         }
         JsonNode daily = root.get("daily");
+        boolean hasPrecip = false;
         for (JsonNode item : daily) {
             DayForecast day = new DayForecast();
-            day.setFxDate(item.get("fxDate").asText());
-            day.setTempMax(item.get("tempMax").asText());
-            day.setTempMin(item.get("tempMin").asText());
-            day.setIconDay(item.get("iconDay").asText());
-            day.setIconNight(item.get("iconNight").asText());
-            day.setTextDay(item.get("textDay").asText());
-            day.setTextNight(item.get("textNight").asText());
-            day.setWindDirDay(item.get("windDirDay").asText());
-            day.setWindScaleDay(item.get("windScaleDay").asText());
-            day.setHumidity(item.get("humidity").asText());
-            day.setUvIndex(item.get("uvIndex").asText());
+            day.setFxDate(item.has("fxDate") && !item.get("fxDate").isNull() ? item.get("fxDate").asText() : "");
+            day.setTempMax(item.has("tempMax") && !item.get("tempMax").isNull() ? item.get("tempMax").asText() : "");
+            day.setTempMin(item.has("tempMin") && !item.get("tempMin").isNull() ? item.get("tempMin").asText() : "");
+            day.setIconDay(item.has("iconDay") && !item.get("iconDay").isNull() ? item.get("iconDay").asText() : "");
+            day.setIconNight(item.has("iconNight") && !item.get("iconNight").isNull() ? item.get("iconNight").asText() : "");
+            day.setTextDay(item.has("textDay") && !item.get("textDay").isNull() ? item.get("textDay").asText() : "");
+            day.setTextNight(item.has("textNight") && !item.get("textNight").isNull() ? item.get("textNight").asText() : "");
+            day.setWindDirDay(item.has("windDirDay") && !item.get("windDirDay").isNull() ? item.get("windDirDay").asText() : "");
+            day.setWindScaleDay(item.has("windScaleDay") && !item.get("windScaleDay").isNull() ? item.get("windScaleDay").asText() : "");
+            day.setHumidity(item.has("humidity") && !item.get("humidity").isNull() ? item.get("humidity").asText() : "");
+            String precip = item.has("precip") && !item.get("precip").isNull() ? item.get("precip").asText() : "";
+            day.setPrecip(precip);
+            if (!precip.isEmpty()) hasPrecip = true;
+            day.setUvIndex(item.has("uvIndex") && !item.get("uvIndex").isNull() ? item.get("uvIndex").asText() : "");
             list.add(day);
         }
+        System.out.println("[get7DayForecast] 返回" + list.size() + "天数据, hasPrecip=" + hasPrecip);
+
+        // 如果和风API没有降水数据，从Open-Meteo补充
+        if (!hasPrecip && !list.isEmpty()) {
+            System.out.println("[get7DayForecast] 和风API无降水数据，降级到Open-Meteo");
+            fetchPrecipFromOpenMeteo(cityId, list);
+        }
+
         return list;
     }
 
     /**
-     * 4. 获取实时空气质量
-     * 对应和风API：实时空气质量 /v7/air/now
+     * 从 Open-Meteo 免费API获取7天降水数据，补充到已有的DayForecast列表中
+     * API文档：https://open-meteo.com/en/docs/forecast-api
      */
-    public AirQuality getAirQuality(String cityId) {
-        String url = UriComponentsBuilder.fromHttpUrl(devUrl + "/v7/air/now")
-                .queryParam("location", cityId)
+    private void fetchPrecipFromOpenMeteo(String cityId, List<DayForecast> list) {
+        String[] latLon = getCityLatLon(cityId);
+        if (latLon == null) {
+            System.out.println("[Open-Meteo Forecast] 无法获取城市 " + cityId + " 的经纬度");
+            return;
+        }
+        String lat = latLon[0];
+        String lon = latLon[1];
+
+        String url = UriComponentsBuilder.fromHttpUrl(openMeteoForecastUrl + "/forecast")
+                .queryParam("latitude", lat)
+                .queryParam("longitude", lon)
+                .queryParam("daily", "precipitation_sum")
+                .queryParam("timezone", "auto")
+                .queryParam("forecast_days", 7)
                 .toUriString();
 
-        JsonNode root = doGetRequest(url);
-        if (!"200".equals(root.get("code").asText())) {
+        System.out.println("[Open-Meteo Forecast] URL: " + url);
+        JsonNode root = doGetRequestNoKey(url);
+        System.out.println("[Open-Meteo Forecast] response: " + (root != null ? root.toString() : "null"));
+
+        if (root == null || !root.has("daily")) {
+            System.out.println("[Open-Meteo Forecast] 响应无daily数据");
+            return;
+        }
+
+        JsonNode dailyNode = root.get("daily");
+        JsonNode precipArray = dailyNode.get("precipitation_sum");
+        JsonNode timeArray = dailyNode.get("time");
+        if (precipArray == null || timeArray == null) {
+            System.out.println("[Open-Meteo Forecast] 无precipitation_sum或time字段");
+            return;
+        }
+
+        // 按日期匹配，将Open-Meteo的降水数据填入DayForecast
+        for (int i = 0; i < precipArray.size() && i < list.size(); i++) {
+            String omDate = timeArray.get(i).asText(); // 格式: "2026-07-14"
+            String precipVal = precipArray.get(i).isNull() ? "0.0" : precipArray.get(i).asText();
+            // 查找匹配的日期
+            for (DayForecast day : list) {
+                if (omDate.equals(day.getFxDate())) {
+                    day.setPrecip(precipVal);
+                    System.out.println("[Open-Meteo Forecast] " + omDate + " precip=" + precipVal);
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * 4. 获取实时空气质量
+     * 直接使用 Open-Meteo 免费API（和风天气免费版不支持此接口）
+     * API文档：https://open-meteo.com/en/docs/air-quality-api
+     */
+    public AirQuality getAirQuality(String cityId) {
+        return fetchAirQualityFromOpenMeteo(cityId);
+    }
+
+    /**
+     * 从 Open-Meteo 免费空气质量API获取数据（降级源）
+     * API文档：https://open-meteo.com/en/docs/air-quality-api
+     * @param cityId 城市ID（如101280601），内部转换为经纬度
+     */
+    private AirQuality fetchAirQualityFromOpenMeteo(String cityId) {
+        String[] latLon = getCityLatLon(cityId);
+        if (latLon == null) {
+            System.out.println("[Open-Meteo Air] 无法获取城市 " + cityId + " 的经纬度");
             return new AirQuality();
         }
-        JsonNode now = root.get("now");
+        String lat = latLon[0];
+        String lon = latLon[1];
+
+        String url = UriComponentsBuilder.fromHttpUrl(openMeteoAirUrl + "/air-quality")
+                .queryParam("latitude", lat)
+                .queryParam("longitude", lon)
+                .queryParam("hourly", "european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone")
+                .queryParam("timezone", "auto")
+                .queryParam("forecast_days", 1)
+                .toUriString();
+
+        System.out.println("[Open-Meteo Air] URL: " + url);
+        JsonNode root = doGetRequestNoKey(url);
+        System.out.println("[Open-Meteo Air] response: " + (root != null ? root.toString() : "null"));
+
+        if (root == null || !root.has("hourly")) {
+            System.out.println("[Open-Meteo Air] 响应无hourly数据");
+            return new AirQuality();
+        }
+
+        JsonNode hourly = root.get("hourly");
+        JsonNode times = hourly.get("time");
+        if (times == null || times.size() == 0) {
+            return new AirQuality();
+        }
+
+        // 取最近一个时间点的数据（最后一个）
+        int idx = times.size() - 1;
+        String pubTime = times.get(idx).asText();
 
         AirQuality air = new AirQuality();
-        air.setPubTime(root.get("updateTime").asText());
-        air.setAqi(now.get("aqi").asText());
-        air.setCategory(now.get("category").asText());
-        air.setLevel(now.get("level").asText());
-        air.setPm2p5(now.get("pm2p5").asText());
-        air.setPm10(now.get("pm10").asText());
-        air.setNo2(now.get("no2").asText());
-        air.setSo2(now.get("so2").asText());
-        air.setCo(now.get("co").asText());
-        air.setO3(now.get("o3").asText());
+        air.setPubTime(pubTime);
+
+        // US AQI 作为主要AQI
+        String usAqi = getHourlyValue(hourly, "us_aqi", idx);
+        if (usAqi != null && !usAqi.isEmpty()) {
+            try {
+                int aqiVal = Integer.parseInt(usAqi);
+                air.setAqi(usAqi);
+                air.setCategory(getAqiCategory(aqiVal));
+                air.setLevel(getAqiLevel(aqiVal));
+            } catch (NumberFormatException e) {
+                System.out.println("[Open-Meteo Air] AQI解析失败: " + usAqi);
+            }
+        }
+
+        air.setPm2p5(getHourlyValue(hourly, "pm2_5", idx));
+        air.setPm10(getHourlyValue(hourly, "pm10", idx));
+        air.setNo2(getHourlyValue(hourly, "nitrogen_dioxide", idx));
+        air.setSo2(getHourlyValue(hourly, "sulphur_dioxide", idx));
+        air.setCo(getHourlyValue(hourly, "carbon_monoxide", idx));
+        air.setO3(getHourlyValue(hourly, "ozone", idx));
+
+        System.out.println("[Open-Meteo Air] 成功获取空气质量数据, AQI=" + air.getAqi());
         return air;
+    }
+
+    /**
+     * 从hourly数据中安全获取指定变量在指定索引的值
+     */
+    private String getHourlyValue(JsonNode hourly, String variable, int index) {
+        JsonNode arr = hourly.get(variable);
+        if (arr != null && index < arr.size() && !arr.get(index).isNull()) {
+            return arr.get(index).asText();
+        }
+        return "";
+    }
+
+    /**
+     * 根据 US AQI 值获取空气质量等级描述
+     */
+    private String getAqiCategory(int aqi) {
+        if (aqi <= 50) return "优";
+        if (aqi <= 100) return "良";
+        if (aqi <= 150) return "轻度污染";
+        if (aqi <= 200) return "中度污染";
+        if (aqi <= 300) return "重度污染";
+        return "严重污染";
+    }
+
+    /**
+     * 根据 US AQI 值获取空气质量等级编号
+     */
+    private String getAqiLevel(int aqi) {
+        if (aqi <= 50) return "1";
+        if (aqi <= 100) return "2";
+        if (aqi <= 150) return "3";
+        if (aqi <= 200) return "4";
+        if (aqi <= 300) return "5";
+        return "6";
+    }
+
+    /**
+     * 根据城市ID获取经纬度
+     * 优先从内置坐标表查找，其次尝试从cityId解析
+     */
+    private String[] getCityLatLon(String cityId) {
+        if (cityId == null || cityId.isEmpty()) return null;
+        // 先尝试从内置坐标表通过城市名反查（这里直接用cityId前缀匹配）
+        // 和风城市ID规则：101 + 省代码(2位) + 市代码(2位) + 县代码(2位)
+        // 直接用常见城市ID映射
+        String[] coords = CITY_ID_COORDS.get(cityId);
+        if (coords != null) return coords;
+        return null;
+    }
+
+    /**
+     * 常见城市ID到经纬度的映射表（覆盖主要城市）
+     */
+    private static final Map<String, String[]> CITY_ID_COORDS = new HashMap<>();
+    static {
+        CITY_ID_COORDS.put("101010100", new String[]{"39.904030", "116.407526"}); // 北京
+        CITY_ID_COORDS.put("101020100", new String[]{"31.230416", "121.473701"}); // 上海
+        CITY_ID_COORDS.put("101030100", new String[]{"39.125596", "117.190182"}); // 天津
+        CITY_ID_COORDS.put("101040100", new String[]{"29.533155", "106.504962"}); // 重庆
+        CITY_ID_COORDS.put("101280101", new String[]{"23.129112", "113.264385"}); // 广州
+        CITY_ID_COORDS.put("101280601", new String[]{"22.543099", "114.057868"}); // 深圳
+        CITY_ID_COORDS.put("101270101", new String[]{"30.659462", "104.065735"}); // 成都
+        CITY_ID_COORDS.put("101200101", new String[]{"30.593099", "114.305393"}); // 武汉
+        CITY_ID_COORDS.put("101190101", new String[]{"32.060255", "118.796877"}); // 南京
+        CITY_ID_COORDS.put("101210101", new String[]{"30.287459", "120.153576"}); // 杭州
+        CITY_ID_COORDS.put("101230101", new String[]{"26.075302", "119.306239"}); // 福州
+        CITY_ID_COORDS.put("101230201", new String[]{"24.479834", "118.089425"}); // 厦门
+        CITY_ID_COORDS.put("101110101", new String[]{"34.263161", "108.948024"}); // 西安
+        CITY_ID_COORDS.put("101180101", new String[]{"34.757975", "113.665412"}); // 郑州
+        CITY_ID_COORDS.put("101120101", new String[]{"36.675807", "117.000923"}); // 济南
+        CITY_ID_COORDS.put("101120201", new String[]{"36.067082", "120.382639"}); // 青岛
+        CITY_ID_COORDS.put("101070101", new String[]{"41.796767", "123.429096"}); // 沈阳
+        CITY_ID_COORDS.put("101070201", new String[]{"38.914006", "121.614682"}); // 大连
+        CITY_ID_COORDS.put("101050101", new String[]{"45.803775", "126.534967"}); // 哈尔滨
+        CITY_ID_COORDS.put("101060101", new String[]{"43.817072", "125.323544"}); // 长春
+        CITY_ID_COORDS.put("101150101", new String[]{"36.623178", "101.778915"}); // 西宁
+        CITY_ID_COORDS.put("101280301", new String[]{"28.228209", "112.938814"}); // 长沙
+        CITY_ID_COORDS.put("101250101", new String[]{"28.676493", "115.892151"}); // 南昌
+        CITY_ID_COORDS.put("101220101", new String[]{"31.861190", "117.283042"}); // 合肥
+        CITY_ID_COORDS.put("101100101", new String[]{"37.857014", "112.549248"}); // 太原
+        CITY_ID_COORDS.put("101090101", new String[]{"38.045474", "114.502461"}); // 石家庄
+        CITY_ID_COORDS.put("101300101", new String[]{"22.824016", "108.320004"}); // 南宁
+        CITY_ID_COORDS.put("101260101", new String[]{"26.578343", "106.713478"}); // 贵阳
+        CITY_ID_COORDS.put("101160101", new String[]{"36.058039", "103.823557"}); // 兰州
+        CITY_ID_COORDS.put("101080101", new String[]{"40.818311", "111.670801"}); // 呼和浩特
+        CITY_ID_COORDS.put("101130101", new String[]{"43.825592", "87.617733"});  // 乌鲁木齐
+        CITY_ID_COORDS.put("101140101", new String[]{"29.660361", "91.132212"});  // 拉萨
+        CITY_ID_COORDS.put("101170101", new String[]{"38.466370", "106.278179"}); // 银川
+        CITY_ID_COORDS.put("101290101", new String[]{"25.038898", "102.832899"}); // 昆明
+        CITY_ID_COORDS.put("101310101", new String[]{"20.044002", "110.198293"}); // 海口
+        CITY_ID_COORDS.put("101310201", new String[]{"18.247872", "109.508268"}); // 三亚
+        CITY_ID_COORDS.put("101210901", new String[]{"29.868388", "121.549792"}); // 宁波
+        CITY_ID_COORDS.put("101190401", new String[]{"31.299379", "120.619585"}); // 苏州
+        CITY_ID_COORDS.put("101190201", new String[]{"31.491169", "120.311910"}); // 无锡
+        CITY_ID_COORDS.put("101280701", new String[]{"22.271029", "113.576728"}); // 珠海
+        CITY_ID_COORDS.put("101281601", new String[]{"23.028762", "113.122717"}); // 佛山
+        CITY_ID_COORDS.put("101281001", new String[]{"23.046237", "113.746262"}); // 东莞
     }
 
     /**
@@ -442,6 +661,19 @@ public class WeatherService {
             e.printStackTrace();
             // 请求异常返回错误码，避免空指针
             return objectMapper.createObjectNode().put("code", "-1");
+        }
+    }
+
+    /**
+     * 通用GET请求（无需API Key）：用于Open-Meteo等免费API
+     */
+    private JsonNode doGetRequestNoKey(String url) {
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            return objectMapper.readTree(response.getBody());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }

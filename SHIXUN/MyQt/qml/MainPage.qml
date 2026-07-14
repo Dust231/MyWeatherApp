@@ -12,6 +12,34 @@ Page {
     property var cities: []
     property var nowWeather: ({})
     property var forecast: []
+    property int forecastVersion: 0
+
+    // 降水图表数据（从 forecast 计算）
+    property var precipData: {
+        var _v = forecastVersion;
+        var list = [];
+        var weekDays = ["日", "一", "二", "三", "四", "五", "六"];
+        for (var i = 0; i < Math.min(7, forecast.length); i++) {
+            var f = forecast[i];
+            var d = new Date(f.fxDate);
+            var dayName = isNaN(d.getTime()) ? "D" + (i+1) : weekDays[d.getDay()];
+            var precipVal = parseFloat(f.precip) || 0;
+            list.push({
+                day: dayName,
+                precip: precipVal,
+                humidity: parseInt(f.humidity) || 0,
+                textDay: f.textDay || ""
+            });
+        }
+        return list;
+    }
+    property real maxPrecip: {
+        var mx = 0;
+        for (var i = 0; i < precipData.length; i++)
+            if (precipData[i].precip > mx) mx = precipData[i].precip;
+        return mx > 0 ? mx : 10;
+    }
+    property bool hasForecastData: forecast && forecast.length > 0
     property var airQuality: ({})
     property var weatherIndex: []
     property var warnings: []
@@ -383,9 +411,8 @@ Page {
 
                         Repeater {
                             model: [
-                                { lbl: "PRECIPITATION", val: (mainPage.nowWeather.precip || "0") + " %" },
-                                { lbl: "HUMIDITY", val: (mainPage.nowWeather.humidity || "--") + " %" },
-                                { lbl: "WIND", val: (mainPage.nowWeather.windSpeed || "0") + " km/h" }
+                                { lbl: "湿度", val: (mainPage.nowWeather.humidity || "--") + " %" },
+                                { lbl: "风速", val: (mainPage.nowWeather.windSpeed || "0") + " km/h" }
                             ]
                             delegate: RowLayout {
                                 Layout.fillWidth: true
@@ -994,8 +1021,8 @@ Page {
                 z: 1
 
                 Connections {
-                    target: parent
-                    function onForecastDataChanged() { chartCanvas.requestPaint(); }
+                    target: mainPage
+                    function onForecastVersionChanged() { chartCanvas.requestPaint(); }
                 }
 
                 Component.onCompleted: requestPaint()
@@ -1053,6 +1080,277 @@ Page {
                         ctx.beginPath();
                         ctx.arc(x, y, 3.5, 0, Math.PI * 2);
                         ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // ========== 空气质量板块 ==========
+        Item {
+            width: parent.width
+            height: 180
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                radius: 16
+                color: "#2a3240"
+                border.color: "#3a4555"
+                border.width: 1
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 18
+                    spacing: 8
+
+                    // 标题行
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: "空气质量"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: "#FFFFFF"
+                            font.letterSpacing: 1
+                        }
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: mainPage.airQuality.aqi ? ("AQI " + mainPage.airQuality.aqi) : ""
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: "#4CAF50"
+                            visible: !!mainPage.airQuality.aqi
+                        }
+                        Rectangle {
+                            width: aqiTagLabel.width + 16
+                            height: 24
+                            radius: 12
+                            color: "#4CAF50"
+                            visible: !!mainPage.airQuality.category
+                            Label {
+                                id: aqiTagLabel
+                                anchors.centerIn: parent
+                                text: mainPage.airQuality.category || ""
+                                font.pixelSize: 12
+                                font.bold: true
+                                color: "#FFFFFF"
+                            }
+                        }
+                    }
+
+                    // 有数据时显示污染物网格
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 3
+                        columnSpacing: 12
+                        rowSpacing: 8
+                        visible: !!mainPage.airQuality.aqi
+
+                        Repeater {
+                            model: [
+                                { label: "PM2.5", key: "pm2p5", unit: "μg/m³" },
+                                { label: "PM10", key: "pm10", unit: "μg/m³" },
+                                { label: "NO₂", key: "no2", unit: "μg/m³" },
+                                { label: "SO₂", key: "so2", unit: "μg/m³" },
+                                { label: "CO", key: "co", unit: "mg/m³" },
+                                { label: "O₃", key: "o3", unit: "μg/m³" }
+                            ]
+                            delegate: ColumnLayout {
+                                spacing: 2
+                                Label {
+                                    text: modelData.label
+                                    font.pixelSize: 11
+                                    color: "#6a7585"
+                                }
+                                Label {
+                                    text: mainPage.airQuality[modelData.key] || "--"
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                    color: "#FFFFFF"
+                                }
+                                Label {
+                                    text: modelData.unit
+                                    font.pixelSize: 10
+                                    color: "#6a7585"
+                                }
+                            }
+                        }
+                    }
+
+                    // 无数据提示
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.alignment: Qt.AlignCenter
+                        spacing: 6
+                        visible: !mainPage.airQuality.aqi
+
+                        Label {
+                            text: "️"
+                            font.pixelSize: 28
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Label {
+                            text: "空气质量数据暂不可用"
+                            font.pixelSize: 14
+                            color: "#6a7585"
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Label {
+                            text: "当前 API 套餐不支持空气质量查询"
+                            font.pixelSize: 11
+                            color: "#4a5565"
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                    }
+                }
+            }
+        }
+
+        // ========== 降水预报板块 ==========
+        Item {
+            width: parent.width
+            height: 240
+
+            // 7天降水数据已在 mainPage 级别计算（precipData / maxPrecip / hasForecastData）
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                radius: 16
+                color: "#2a3240"
+                border.color: "#3a4555"
+                border.width: 1
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 18
+                    spacing: 12
+
+                    // 标题行
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: "降水预报"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: "#FFFFFF"
+                            font.letterSpacing: 1
+                        }
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: "当前降水 " + (mainPage.nowWeather.precip || "0") + " mm"
+                            font.pixelSize: 12
+                            color: "#6a7585"
+                        }
+                    }
+
+                    // 7天降水柱状图
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 140
+                        visible: mainPage.hasForecastData
+
+                        Row {
+                            id: precipRow
+                            anchors.fill: parent
+                            anchors.topMargin: 8
+                            anchors.bottomMargin: 8
+                            spacing: 0
+
+                            Repeater {
+                                model: mainPage.precipData
+                                delegate: Item {
+                                    width: precipRow.width / Math.max(mainPage.precipData.length, 1)
+                                    height: precipRow.height
+
+                                    // 降水量数值（柱子上方）
+                                    Label {
+                                        id: precipLabel
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: barRect.top
+                                        anchors.bottomMargin: 2
+                                        text: modelData.precip > 0 ? modelData.precip + "" : ""
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                        color: "#4FC3F7"
+                                    }
+
+                                    // 柱状条（底部对齐，向上生长）
+                                    Rectangle {
+                                        id: barRect
+                                        width: Math.min(parent.width * 0.5, 28)
+                                        height: {
+                                            var ratio = modelData.precip / Math.max(mainPage.maxPrecip, 1);
+                                            return Math.max(ratio * 50, 12);
+                                        }
+                                        radius: 3
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: dayLabel.top
+                                        anchors.bottomMargin: 4
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: "#4FC3F7" }
+                                            GradientStop { position: 1.0; color: "#4A90D9" }
+                                        }
+                                    }
+
+                                    // 星期（底部固定行）
+                                    Label {
+                                        id: dayLabel
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: parent.bottom
+                                        text: modelData.day
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: index === 0 ? "#4FC3F7" : "#8899AA"
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 无降水数据提示
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 140
+                        Layout.alignment: Qt.AlignCenter
+                        spacing: 6
+                        visible: !mainPage.hasForecastData
+
+                        Label {
+                            text: "️"
+                            font.pixelSize: 28
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Label {
+                            text: "未来7天暂无降水数据"
+                            font.pixelSize: 14
+                            color: "#6a7585"
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Label {
+                            text: "当前 API 套餐可能不支持降水预报查询"
+                            font.pixelSize: 11
+                            color: "#4a5565"
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                    }
+
+                    // 图例
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 16
+                        visible: mainPage.hasForecastData
+                        Item { Layout.fillWidth: true }
+                        RowLayout {
+                            spacing: 4
+                            Rectangle { width: 10; height: 10; radius: 2; color: "#4FC3F7" }
+                            Label { text: "降水量 (mm)"; font.pixelSize: 10; color: "#6a7585" }
+                        }
                     }
                 }
             }
@@ -1159,6 +1457,9 @@ Page {
 
         function onForecastReady(forecastData) {
             mainPage.forecast = forecastData;
+            mainPage.forecastVersion++;
+            console.log("[onForecastReady] forecast count:", forecastData.length,
+                "first:", forecastData.length > 0 ? JSON.stringify(forecastData[0]) : "N/A");
         }
 
         function onAirQualityReady(air) {

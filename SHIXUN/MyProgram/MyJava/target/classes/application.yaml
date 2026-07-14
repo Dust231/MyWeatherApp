@@ -10,3 +10,7 @@ qweather:
   geo-url: https://my3qqtq38a.re.qweatherapi.com
   # 天气数据接口域名（使用自定义API Host）
   dev-url: https://my3qqtq38a.re.qweatherapi.com
+  # Open-Meteo 空气质量API（免费，作为和风空气质量降级源）
+  open-meteo-air-url: https://air-quality-api.open-meteo.com/v1
+  # Open-Meteo 天气预报API（免费，作为和风降水数据降级源）
+  open-meteo-forecast-url: https://api.open-meteo.com/v1

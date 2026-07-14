@@ -160,6 +160,7 @@ void WeatherApi::onForecastReply()
     }
 
     QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    qDebug() << "[onForecastReply] response:" << root;
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
         reply->deleteLater();
@@ -181,9 +182,11 @@ void WeatherApi::onForecastReply()
         map["windDirDay"] = obj["windDirDay"].toString();
         map["windScaleDay"] = obj["windScaleDay"].toString();
         map["humidity"]   = obj["humidity"].toString();
+        map["precip"]     = obj["precip"].toString();
         map["uvIndex"]    = obj["uvIndex"].toString();
         forecast.append(map);
     }
+    qDebug() << "[onForecastReply] forecast count:" << forecast.size() << "first precip:" << (forecast.isEmpty() ? "N/A" : forecast[0].toMap()["precip"]);
     emit forecastReady(forecast);
     reply->deleteLater();
 }
@@ -205,6 +208,7 @@ void WeatherApi::onAirQualityReply()
     }
 
     QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    qDebug() << "[onAirQualityReply] response:" << root;
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
         reply->deleteLater();
@@ -212,6 +216,7 @@ void WeatherApi::onAirQualityReply()
     }
 
     QJsonObject data = root["data"].toObject();
+    qDebug() << "[onAirQualityReply] data:" << data;
     QVariantMap air;
     air["aqi"]     = data["aqi"].toString();
     air["category"] = data["category"].toString();
