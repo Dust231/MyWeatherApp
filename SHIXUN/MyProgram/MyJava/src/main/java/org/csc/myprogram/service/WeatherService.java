@@ -1,9 +1,16 @@
 package org.csc.myprogram.service;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import net.sourceforge.pinyin4j.PinyinHelper;
+import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
+import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination;
 
 import org.csc.myprogram.entity.AirQuality;
 import org.csc.myprogram.entity.AstronomyInfo;
@@ -90,97 +97,206 @@ public class WeatherService {
 
     /**
      * 1.5 城市搜索（模糊查询）
-     * 使用本地城市数据库搜索，从内置坐标表补充经纬度
+     * 优先调用和风天气 Geo API 获取精确坐标，API失败时回退到本地城市数据库
      * @param keyword 搜索关键词，支持中文和拼音
      */
     public List<CityInfo> lookupCity(String keyword) {
-        // 使用本地城市数据库搜索
-        List<CityInfo> list = CityDatabase.searchCities(keyword);
-        
-        // 从内置坐标表补充经纬度（优先按城市ID查找，再按城市名查找）
+        // 优先调用和风天气 Geo API
+        List<CityInfo> list = lookupCityFromApi(keyword);
+        if (list != null && !list.isEmpty()) {
+            return list;
+        }
+
+        // API失败或无结果时，回退到本地城市数据库
+        System.out.println("[lookupCity] Geo API无结果，回退到本地数据库: " + keyword);
+        list = CityDatabase.searchCities(keyword);
         for (CityInfo city : list) {
             if (city.getLon() == null || city.getLat() == null) {
-                // 先尝试按城市ID查找
                 String[] coords = getCoordsByCityId(city.getId());
                 if (coords != null) {
-                    city.setLon(coords[1]);  // lon
-                    city.setLat(coords[0]);  // lat
+                    city.setLat(coords[0]);
+                    city.setLon(coords[1]);
                     continue;
                 }
-                // 再尝试按城市名查找
                 coords = getCityCoordinates(city.getName());
                 if (coords != null) {
-                    city.setLon(coords[0]);
-                    city.setLat(coords[1]);
+                    city.setLat(coords[0]);
+                    city.setLon(coords[1]);
                 }
             }
         }
-        
         return list;
     }
 
     /**
+     * 调用和风天气 Geo API 进行城市搜索
+     * 对应和风API：/geo/v2/city/lookup
+     * 返回结果自带精确经纬度
+     * 注意：和风API对中文关键词支持不稳定，统一转为拼音后调用
+     */
+    private List<CityInfo> lookupCityFromApi(String keyword) {
+        // 将中文关键词转为拼音，确保API能正确识别
+        String searchKeyword = toPinyin(keyword);
+        System.out.println("[lookupCityFromApi] 原始关键词=" + keyword + ", 拼音=" + searchKeyword);
+
+        List<CityInfo> allResults = new ArrayList<>();
+        List<CityInfo> chinaResults = new ArrayList<>();
+
+        // 使用 build().toUri() 生成 URI 对象，避免 RestTemplate 对 String URL 二次编码
+        URI uri = UriComponentsBuilder.fromHttpUrl(geoUrl + "/geo/v2/city/lookup")
+                .queryParam("location", searchKeyword)
+                .queryParam("lang", "zh")
+                .queryParam("key", apiKey)
+                .build()
+                .toUri();
+        System.out.println("[lookupCityFromApi] URI=" + uri);
+
+        JsonNode root = doGetRequestUri(uri);
+        if (root == null || !"200".equals(root.get("code").asText())) {
+            System.out.println("[lookupCityFromApi] API请求失败或无结果: " + (root != null ? root.get("code").asText() : "null"));
+            return null;
+        }
+
+        JsonNode locationList = root.get("location");
+        if (locationList == null || !locationList.isArray()) {
+            return null;
+        }
+
+        for (JsonNode item : locationList) {
+            CityInfo city = new CityInfo();
+            city.setId(item.has("id") && !item.get("id").isNull() ? item.get("id").asText() : "");
+            city.setName(item.has("name") && !item.get("name").isNull() ? item.get("name").asText() : "");
+            city.setAdm1(item.has("adm1") && !item.get("adm1").isNull() ? item.get("adm1").asText() : "");
+            city.setAdm2(item.has("adm2") && !item.get("adm2").isNull() ? item.get("adm2").asText() : "");
+            city.setLon(item.has("lon") && !item.get("lon").isNull() ? item.get("lon").asText() : "");
+            city.setLat(item.has("lat") && !item.get("lat").isNull() ? item.get("lat").asText() : "");
+            city.setCountry(item.has("country") && !item.get("country").isNull() ? item.get("country").asText() : "");
+            city.setTz(item.has("tz") && !item.get("tz").isNull() ? item.get("tz").asText() : "");
+            allResults.add(city);
+            // 过滤：只保留中国城市
+            if ("中国".equals(city.getCountry())) {
+                chinaResults.add(city);
+            }
+            System.out.println("[lookupCityFromApi] " + city.getName() + " (" + city.getCountry() + ") -> lon=" + city.getLon() + ", lat=" + city.getLat());
+        }
+
+        System.out.println("[lookupCityFromApi] 从Geo API获取" + allResults.size() + "个结果，其中中国城市" + chinaResults.size() + "个");
+
+        // 只返回中国城市；若无中国城市则返回null，让调用方回退到本地数据库
+        return chinaResults.isEmpty() ? null : chinaResults;
+    }
+
+    /**
+     * 将中文字符串转为拼音（无声调、小写）
+     * 非中文字符保持原样，如 "邢台" -> "xingtai", "北京" -> "beijing"
+     */
+    private String toPinyin(String chinese) {
+        if (chinese == null || chinese.isEmpty()) return chinese;
+        if (chinese.chars().allMatch(c -> c < 128)) return chinese.toLowerCase();
+
+        HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
+        format.setCaseType(HanyuPinyinCaseType.LOWERCASE);
+        format.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
+
+        StringBuilder sb = new StringBuilder();
+        for (char c : chinese.toCharArray()) {
+            if (c < 128) {
+                sb.append(c);
+            } else {
+                try {
+                    String[] pinyinArray = PinyinHelper.toHanyuPinyinStringArray(c, format);
+                    if (pinyinArray != null && pinyinArray.length > 0) {
+                        sb.append(pinyinArray[0]);
+                    } else {
+                        sb.append(c);
+                    }
+                } catch (BadHanyuPinyinOutputFormatCombination e) {
+                    sb.append(c);
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
      * 内置中国主要城市坐标表（覆盖省会及常用城市）
+     * 格式：[纬度lat, 经度lon]，与 CITY_ID_COORDS 保持一致
      */
     private static final Map<String, String[]> CITY_COORDS = new HashMap<>();
     static {
         // 直辖市
-        CITY_COORDS.put("北京", new String[]{"116.407526", "39.904030"});
-        CITY_COORDS.put("上海", new String[]{"121.473701", "31.230416"});
-        CITY_COORDS.put("天津", new String[]{"117.190182", "39.125596"});
-        CITY_COORDS.put("重庆", new String[]{"106.504962", "29.533155"});
+        CITY_COORDS.put("北京", new String[]{"39.904030", "116.407526"});
+        CITY_COORDS.put("上海", new String[]{"31.230416", "121.473701"});
+        CITY_COORDS.put("天津", new String[]{"39.125596", "117.190182"});
+        CITY_COORDS.put("重庆", new String[]{"29.533155", "106.504962"});
         // 省会 & 主要城市
-        CITY_COORDS.put("长沙", new String[]{"112.938814", "28.228209"});
-        CITY_COORDS.put("长春", new String[]{"125.323544", "43.817072"});
-        CITY_COORDS.put("成都", new String[]{"104.065735", "30.659462"});
-        CITY_COORDS.put("广州", new String[]{"113.264385", "23.129112"});
-        CITY_COORDS.put("深圳", new String[]{"114.057868", "22.543099"});
-        CITY_COORDS.put("杭州", new String[]{"120.153576", "30.287459"});
-        CITY_COORDS.put("南京", new String[]{"118.796877", "32.060255"});
-        CITY_COORDS.put("武汉", new String[]{"114.305393", "30.593099"});
-        CITY_COORDS.put("西安", new String[]{"108.948024", "34.263161"});
-        CITY_COORDS.put("郑州", new String[]{"113.665412", "34.757975"});
-        CITY_COORDS.put("济南", new String[]{"117.000923", "36.675807"});
-        CITY_COORDS.put("沈阳", new String[]{"123.429096", "41.796767"});
-        CITY_COORDS.put("哈尔滨", new String[]{"126.534967", "45.803775"});
-        CITY_COORDS.put("昆明", new String[]{"102.832899", "25.038898"});
-        CITY_COORDS.put("福州", new String[]{"119.306239", "26.075302"});
-        CITY_COORDS.put("南昌", new String[]{"115.892151", "28.676493"});
-        CITY_COORDS.put("合肥", new String[]{"117.283042", "31.861190"});
-        CITY_COORDS.put("太原", new String[]{"112.549248", "37.857014"});
-        CITY_COORDS.put("石家庄", new String[]{"114.502461", "38.045474"});
-        CITY_COORDS.put("南宁", new String[]{"108.320004", "22.824016"});
-        CITY_COORDS.put("贵阳", new String[]{"106.713478", "26.578343"});
-        CITY_COORDS.put("兰州", new String[]{"103.823557", "36.058039"});
-        CITY_COORDS.put("呼和浩特", new String[]{"111.670801", "40.818311"});
-        CITY_COORDS.put("乌鲁木齐", new String[]{"87.617733", "43.825592"});
-        CITY_COORDS.put("拉萨", new String[]{"91.132212", "29.660361"});
-        CITY_COORDS.put("银川", new String[]{"106.278179", "38.466370"});
-        CITY_COORDS.put("西宁", new String[]{"101.778915", "36.623178"});
-        CITY_COORDS.put("海口", new String[]{"110.198293", "20.044002"});
-        CITY_COORDS.put("三亚", new String[]{"109.508268", "18.247872"});
-        CITY_COORDS.put("大连", new String[]{"121.614682", "38.914006"});
-        CITY_COORDS.put("青岛", new String[]{"120.382639", "36.067082"});
-        CITY_COORDS.put("厦门", new String[]{"118.089425", "24.479834"});
-        CITY_COORDS.put("宁波", new String[]{"121.549792", "29.868388"});
-        CITY_COORDS.put("苏州", new String[]{"120.619585", "31.299379"});
-        CITY_COORDS.put("无锡", new String[]{"120.311910", "31.491169"});
-        CITY_COORDS.put("珠海", new String[]{"113.576728", "22.271029"});
-        CITY_COORDS.put("东莞", new String[]{"113.746262", "23.046237"});
-        CITY_COORDS.put("佛山", new String[]{"113.122717", "23.028762"});
-        CITY_COORDS.put("温州", new String[]{"120.672111", "28.000575"});
-        CITY_COORDS.put("常州", new String[]{"119.946973", "31.772684"});
-        CITY_COORDS.put("徐州", new String[]{"117.184811", "34.261003"});
-        CITY_COORDS.put("烟台", new String[]{"121.391382", "37.539297"});
-        CITY_COORDS.put("潍坊", new String[]{"119.107078", "36.709250"});
-        CITY_COORDS.put("临沂", new String[]{"118.356449", "35.104672"});
-        CITY_COORDS.put("唐山", new String[]{"118.175393", "39.635113"});
-        CITY_COORDS.put("保定", new String[]{"115.482331", "38.867658"});
-        CITY_COORDS.put("泉州", new String[]{"118.589421", "24.908409"});
-        CITY_COORDS.put("嘉兴", new String[]{"120.750865", "30.765403"});
-        CITY_COORDS.put("绍兴", new String[]{"120.582112", "29.997117"});
-        CITY_COORDS.put("台州", new String[]{"121.428300", "28.661378"});
-        CITY_COORDS.put("南通", new String[]{"120.864608", "32.016212"});
+        CITY_COORDS.put("长沙", new String[]{"28.228209", "112.938814"});
+        CITY_COORDS.put("长春", new String[]{"43.817072", "125.323544"});
+        CITY_COORDS.put("成都", new String[]{"30.659462", "104.065735"});
+        CITY_COORDS.put("广州", new String[]{"23.129112", "113.264385"});
+        CITY_COORDS.put("深圳", new String[]{"22.543099", "114.057868"});
+        CITY_COORDS.put("杭州", new String[]{"30.287459", "120.153576"});
+        CITY_COORDS.put("南京", new String[]{"32.060255", "118.796877"});
+        CITY_COORDS.put("武汉", new String[]{"30.593099", "114.305393"});
+        CITY_COORDS.put("西安", new String[]{"34.263161", "108.948024"});
+        CITY_COORDS.put("郑州", new String[]{"34.757975", "113.665412"});
+        CITY_COORDS.put("济南", new String[]{"36.675807", "117.000923"});
+        CITY_COORDS.put("沈阳", new String[]{"41.796767", "123.429096"});
+        CITY_COORDS.put("哈尔滨", new String[]{"45.803775", "126.534967"});
+        CITY_COORDS.put("昆明", new String[]{"25.038898", "102.832899"});
+        CITY_COORDS.put("福州", new String[]{"26.075302", "119.306239"});
+        CITY_COORDS.put("南昌", new String[]{"28.676493", "115.892151"});
+        CITY_COORDS.put("合肥", new String[]{"31.861190", "117.283042"});
+        CITY_COORDS.put("太原", new String[]{"37.857014", "112.549248"});
+        CITY_COORDS.put("石家庄", new String[]{"38.045474", "114.502461"});
+        CITY_COORDS.put("南宁", new String[]{"22.824016", "108.320004"});
+        CITY_COORDS.put("贵阳", new String[]{"26.578343", "106.713478"});
+        CITY_COORDS.put("兰州", new String[]{"36.058039", "103.823557"});
+        CITY_COORDS.put("呼和浩特", new String[]{"40.818311", "111.670801"});
+        CITY_COORDS.put("乌鲁木齐", new String[]{"43.825592", "87.617733"});
+        CITY_COORDS.put("拉萨", new String[]{"29.660361", "91.132212"});
+        CITY_COORDS.put("银川", new String[]{"38.466370", "106.278179"});
+        CITY_COORDS.put("西宁", new String[]{"36.623178", "101.778915"});
+        CITY_COORDS.put("海口", new String[]{"20.044002", "110.198293"});
+        CITY_COORDS.put("三亚", new String[]{"18.247872", "109.508268"});
+        CITY_COORDS.put("大连", new String[]{"38.914006", "121.614682"});
+        CITY_COORDS.put("青岛", new String[]{"36.067082", "120.382639"});
+        CITY_COORDS.put("厦门", new String[]{"24.479834", "118.089425"});
+        CITY_COORDS.put("宁波", new String[]{"29.868388", "121.549792"});
+        CITY_COORDS.put("苏州", new String[]{"31.299379", "120.619585"});
+        CITY_COORDS.put("无锡", new String[]{"31.491169", "120.311910"});
+        CITY_COORDS.put("珠海", new String[]{"22.271029", "113.576728"});
+        CITY_COORDS.put("东莞", new String[]{"23.046237", "113.746262"});
+        CITY_COORDS.put("佛山", new String[]{"23.028762", "113.122717"});
+        CITY_COORDS.put("惠州", new String[]{"23.111847", "114.415720"});
+        CITY_COORDS.put("中山", new String[]{"22.520714", "113.382019"});
+        CITY_COORDS.put("江门", new String[]{"22.578868", "113.081904"});
+        CITY_COORDS.put("湛江", new String[]{"21.270116", "110.359095"});
+        CITY_COORDS.put("肇庆", new String[]{"23.051538", "112.465291"});
+        CITY_COORDS.put("茂名", new String[]{"21.663352", "110.925456"});
+        CITY_COORDS.put("汕头", new String[]{"23.353509", "116.681972"});
+        CITY_COORDS.put("梅州", new String[]{"24.288616", "116.117556"});
+        CITY_COORDS.put("韶关", new String[]{"24.810663", "113.597523"});
+        CITY_COORDS.put("清远", new String[]{"23.682016", "113.056031"});
+        CITY_COORDS.put("潮州", new String[]{"23.656740", "116.622303"});
+        CITY_COORDS.put("揭阳", new String[]{"23.549702", "116.372638"});
+        CITY_COORDS.put("阳江", new String[]{"21.858190", "111.982240"});
+        CITY_COORDS.put("河源", new String[]{"23.745972", "114.700448"});
+        CITY_COORDS.put("云浮", new String[]{"22.915196", "112.044491"});
+        CITY_COORDS.put("汕尾", new String[]{"22.785616", "115.364868"});
+        CITY_COORDS.put("温州", new String[]{"28.000575", "120.672111"});
+        CITY_COORDS.put("常州", new String[]{"31.772684", "119.946973"});
+        CITY_COORDS.put("徐州", new String[]{"34.261003", "117.184811"});
+        CITY_COORDS.put("烟台", new String[]{"37.539297", "121.391382"});
+        CITY_COORDS.put("潍坊", new String[]{"36.709250", "119.107078"});
+        CITY_COORDS.put("临沂", new String[]{"35.104672", "118.356449"});
+        CITY_COORDS.put("唐山", new String[]{"39.635113", "118.175393"});
+        CITY_COORDS.put("保定", new String[]{"38.867658", "115.482331"});
+        CITY_COORDS.put("泉州", new String[]{"24.908409", "118.589421"});
+        CITY_COORDS.put("嘉兴", new String[]{"30.765403", "120.750865"});
+        CITY_COORDS.put("绍兴", new String[]{"29.997117", "120.582112"});
+        CITY_COORDS.put("台州", new String[]{"28.661378", "121.428300"});
+        CITY_COORDS.put("南通", new String[]{"32.016212", "120.864608"});
     }
 
     /**
@@ -539,21 +655,48 @@ public class WeatherService {
 
     /**
      * 常见城市ID到经纬度的映射表（覆盖主要城市）
+     * 格式：[纬度lat, 经度lon]
+     * 城市ID与 CityDatabase 中的ID一一对应
      */
     private static final Map<String, String[]> CITY_ID_COORDS = new HashMap<>();
     static {
+        // 直辖市
         CITY_ID_COORDS.put("101010100", new String[]{"39.904030", "116.407526"}); // 北京
         CITY_ID_COORDS.put("101020100", new String[]{"31.230416", "121.473701"}); // 上海
         CITY_ID_COORDS.put("101030100", new String[]{"39.125596", "117.190182"}); // 天津
         CITY_ID_COORDS.put("101040100", new String[]{"29.533155", "106.504962"}); // 重庆
+        // 广东省
         CITY_ID_COORDS.put("101280101", new String[]{"23.129112", "113.264385"}); // 广州
+        CITY_ID_COORDS.put("101280201", new String[]{"24.810663", "113.597523"}); // 韶关
+        CITY_ID_COORDS.put("101280301", new String[]{"23.111847", "114.415720"}); // 惠州
+        CITY_ID_COORDS.put("101280401", new String[]{"24.288616", "116.117556"}); // 梅州
+        CITY_ID_COORDS.put("101280501", new String[]{"23.353509", "116.681972"}); // 汕头
         CITY_ID_COORDS.put("101280601", new String[]{"22.543099", "114.057868"}); // 深圳
+        CITY_ID_COORDS.put("101280701", new String[]{"22.271029", "113.576728"}); // 珠海
+        CITY_ID_COORDS.put("101280800", new String[]{"23.028762", "113.122717"}); // 佛山
+        CITY_ID_COORDS.put("101280901", new String[]{"23.051538", "112.465291"}); // 肇庆
+        CITY_ID_COORDS.put("101281001", new String[]{"21.270116", "110.359095"}); // 湛江
+        CITY_ID_COORDS.put("101281101", new String[]{"22.578868", "113.081904"}); // 江门
+        CITY_ID_COORDS.put("101281201", new String[]{"23.745972", "114.700448"}); // 河源
+        CITY_ID_COORDS.put("101281301", new String[]{"23.682016", "113.056031"}); // 清远
+        CITY_ID_COORDS.put("101281401", new String[]{"22.915196", "112.044491"}); // 云浮
+        CITY_ID_COORDS.put("101281501", new String[]{"23.656740", "116.622303"}); // 潮州
+        CITY_ID_COORDS.put("101281601", new String[]{"23.046237", "113.746262"}); // 东莞
+        CITY_ID_COORDS.put("101281701", new String[]{"22.520714", "113.382019"}); // 中山
+        CITY_ID_COORDS.put("101281801", new String[]{"21.858190", "111.982240"}); // 阳江
+        CITY_ID_COORDS.put("101281901", new String[]{"23.549702", "116.372638"}); // 揭阳
+        CITY_ID_COORDS.put("101282001", new String[]{"21.663352", "110.925456"}); // 茂名
+        CITY_ID_COORDS.put("101282101", new String[]{"22.785616", "115.364868"}); // 汕尾
+        // 其他省会 & 主要城市
         CITY_ID_COORDS.put("101270101", new String[]{"30.659462", "104.065735"}); // 成都
+        CITY_ID_COORDS.put("101250101", new String[]{"28.228209", "112.938814"}); // 长沙
         CITY_ID_COORDS.put("101200101", new String[]{"30.593099", "114.305393"}); // 武汉
         CITY_ID_COORDS.put("101190101", new String[]{"32.060255", "118.796877"}); // 南京
         CITY_ID_COORDS.put("101210101", new String[]{"30.287459", "120.153576"}); // 杭州
         CITY_ID_COORDS.put("101230101", new String[]{"26.075302", "119.306239"}); // 福州
         CITY_ID_COORDS.put("101230201", new String[]{"24.479834", "118.089425"}); // 厦门
+        CITY_ID_COORDS.put("101240101", new String[]{"28.676493", "115.892151"}); // 南昌
+        CITY_ID_COORDS.put("101220101", new String[]{"31.861190", "117.283042"}); // 合肥
         CITY_ID_COORDS.put("101110101", new String[]{"34.263161", "108.948024"}); // 西安
         CITY_ID_COORDS.put("101180101", new String[]{"34.757975", "113.665412"}); // 郑州
         CITY_ID_COORDS.put("101120101", new String[]{"36.675807", "117.000923"}); // 济南
@@ -563,9 +706,6 @@ public class WeatherService {
         CITY_ID_COORDS.put("101050101", new String[]{"45.803775", "126.534967"}); // 哈尔滨
         CITY_ID_COORDS.put("101060101", new String[]{"43.817072", "125.323544"}); // 长春
         CITY_ID_COORDS.put("101150101", new String[]{"36.623178", "101.778915"}); // 西宁
-        CITY_ID_COORDS.put("101280301", new String[]{"28.228209", "112.938814"}); // 长沙
-        CITY_ID_COORDS.put("101250101", new String[]{"28.676493", "115.892151"}); // 南昌
-        CITY_ID_COORDS.put("101220101", new String[]{"31.861190", "117.283042"}); // 合肥
         CITY_ID_COORDS.put("101100101", new String[]{"37.857014", "112.549248"}); // 太原
         CITY_ID_COORDS.put("101090101", new String[]{"38.045474", "114.502461"}); // 石家庄
         CITY_ID_COORDS.put("101300101", new String[]{"22.824016", "108.320004"}); // 南宁
@@ -578,12 +718,13 @@ public class WeatherService {
         CITY_ID_COORDS.put("101290101", new String[]{"25.038898", "102.832899"}); // 昆明
         CITY_ID_COORDS.put("101310101", new String[]{"20.044002", "110.198293"}); // 海口
         CITY_ID_COORDS.put("101310201", new String[]{"18.247872", "109.508268"}); // 三亚
+        // 江苏/浙江
         CITY_ID_COORDS.put("101210901", new String[]{"29.868388", "121.549792"}); // 宁波
         CITY_ID_COORDS.put("101190401", new String[]{"31.299379", "120.619585"}); // 苏州
         CITY_ID_COORDS.put("101190201", new String[]{"31.491169", "120.311910"}); // 无锡
-        CITY_ID_COORDS.put("101280701", new String[]{"22.271029", "113.576728"}); // 珠海
-        CITY_ID_COORDS.put("101281601", new String[]{"23.028762", "113.122717"}); // 佛山
-        CITY_ID_COORDS.put("101281001", new String[]{"23.046237", "113.746262"}); // 东莞
+        // 河北
+        CITY_ID_COORDS.put("101090501", new String[]{"39.635113", "118.175393"}); // 唐山
+        CITY_ID_COORDS.put("101090201", new String[]{"38.867658", "115.482331"}); // 保定
     }
 
     /**
@@ -724,24 +865,38 @@ public class WeatherService {
     }
 
     /**
-     * 通用GET请求：统一添加API Key鉴权请求头 + URL key参数
+     * 通用GET请求：统一添加API Key鉴权请求头
      * 所有接口复用该方法，统一异常处理
      */
     private JsonNode doGetRequest(String url) {
         try {
-            // 按照和风官方规范，在请求头中添加鉴权参数
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-QW-Api-Key", apiKey);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            // 在URL中添加key参数（和风API要求）
             String finalUrl = url + (url.contains("?") ? "&" : "?") + "key=" + apiKey;
-
             ResponseEntity<String> response = restTemplate.exchange(finalUrl, HttpMethod.GET, entity, String.class);
             return objectMapper.readTree(response.getBody());
         } catch (Exception e) {
             e.printStackTrace();
-            // 请求异常返回错误码，避免空指针
+            return objectMapper.createObjectNode().put("code", "-1");
+        }
+    }
+
+    /**
+     * 通用GET请求（URI版本）：避免RestTemplate对String URL二次编码
+     * 用于含中文参数的请求（如城市搜索）
+     */
+    private JsonNode doGetRequestUri(URI uri) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-QW-Api-Key", apiKey);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
+            return objectMapper.readTree(response.getBody());
+        } catch (Exception e) {
+            e.printStackTrace();
             return objectMapper.createObjectNode().put("code", "-1");
         }
     }

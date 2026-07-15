@@ -1,4 +1,5 @@
 #include "weatherapi.h"
+#include "weathercache.h"
 #include <QDebug>
 #include <QUrlQuery>
 
@@ -6,11 +7,112 @@ WeatherApi::WeatherApi(QObject *parent)
     : QObject(parent), m_net(new QNetworkAccessManager(this))
 {}
 
+void WeatherApi::setCache(WeatherCache *cache)
+{
+    m_cache = cache;
+}
+
 void WeatherApi::doGet(const QString &url, const char *slot)
 {
     qDebug() << "[WeatherApi] GET:" << url;
     QNetworkReply *reply = m_net->get(QNetworkRequest(QUrl(url)));
     connect(reply, SIGNAL(finished()), this, slot);
+}
+
+// ==================== 缓存辅助 ====================
+bool WeatherApi::tryLoadCache(const QString &cityId, const QString &type)
+{
+    if (!m_cache) return false;
+
+    QString json;
+    if (type == "now")        json = m_cache->loadNowWeather(cityId);
+    else if (type == "forecast") json = m_cache->loadForecast(cityId);
+    else if (type == "air")   json = m_cache->loadAirQuality(cityId);
+    else if (type == "index") json = m_cache->loadWeatherIndex(cityId);
+    else if (type == "warning") json = m_cache->loadWeatherWarning(cityId);
+    else return false;
+
+    if (json.isEmpty()) return false;
+
+    qDebug() << "[WeatherApi] 缓存命中，跳过网络请求:" << type << cityId;
+    QJsonObject root = QJsonDocument::fromJson(json.toUtf8()).object();
+    QJsonObject data = root["data"].isObject() ? root["data"].toObject() : QJsonObject();
+    QJsonArray  arr  = root["data"].isArray() ? root["data"].toArray() : QJsonArray();
+
+    if (type == "now") {
+        QVariantMap weather;
+        weather["temp"]      = data["temp"].toString();
+        weather["feelsLike"] = data["feelsLike"].toString();
+        weather["text"]      = data["text"].toString();
+        weather["icon"]      = data["icon"].toString();
+        weather["windDir"]   = data["windDir"].toString();
+        weather["windScale"] = data["windScale"].toString();
+        weather["windSpeed"] = data["windSpeed"].toString();
+        weather["humidity"]  = data["humidity"].toString();
+        weather["precip"]    = data["precip"].toString();
+        weather["pressure"]  = data["pressure"].toString();
+        weather["vis"]       = data["vis"].toString();
+        weather["obsTime"]   = data["obsTime"].toString();
+        emit nowWeatherReady(weather);
+    } else if (type == "forecast") {
+        QVariantList forecast;
+        for (const QJsonValue &v : arr) {
+            QJsonObject obj = v.toObject();
+            QVariantMap map;
+            map["fxDate"]     = obj["fxDate"].toString();
+            map["tempMax"]    = obj["tempMax"].toString();
+            map["tempMin"]    = obj["tempMin"].toString();
+            map["textDay"]    = obj["textDay"].toString();
+            map["textNight"]  = obj["textNight"].toString();
+            map["iconDay"]    = obj["iconDay"].toString();
+            map["iconNight"]  = obj["iconNight"].toString();
+            map["windDirDay"] = obj["windDirDay"].toString();
+            map["windScaleDay"] = obj["windScaleDay"].toString();
+            map["humidity"]   = obj["humidity"].toString();
+            map["precip"]     = obj["precip"].toString();
+            map["uvIndex"]    = obj["uvIndex"].toString();
+            forecast.append(map);
+        }
+        emit forecastReady(forecast);
+    } else if (type == "air") {
+        QVariantMap air;
+        air["aqi"]     = data["aqi"].toString();
+        air["category"] = data["category"].toString();
+        air["level"]   = data["level"].toString();
+        air["pm2p5"]   = data["pm2p5"].toString();
+        air["pm10"]    = data["pm10"].toString();
+        air["no2"]     = data["no2"].toString();
+        air["so2"]     = data["so2"].toString();
+        air["co"]      = data["co"].toString();
+        air["o3"]      = data["o3"].toString();
+        air["pubTime"] = data["pubTime"].toString();
+        emit airQualityReady(air);
+    } else if (type == "index") {
+        QVariantList indexList;
+        for (const QJsonValue &v : arr) {
+            QJsonObject obj = v.toObject();
+            QVariantMap map;
+            map["name"]  = obj["name"].toString();
+            map["level"] = obj["level"].toString();
+            map["text"]  = obj["text"].toString();
+            indexList.append(map);
+        }
+        emit weatherIndexReady(indexList);
+    } else if (type == "warning") {
+        QVariantList warningList;
+        for (const QJsonValue &v : arr) {
+            QJsonObject obj = v.toObject();
+            QVariantMap map;
+            map["title"]   = obj["title"].toString();
+            map["typeName"] = obj["typeName"].toString();
+            map["level"]   = obj["level"].toString();
+            map["text"]    = obj["text"].toString();
+            map["pubTime"] = obj["pubTime"].toString();
+            warningList.append(map);
+        }
+        emit weatherWarningReady(warningList);
+    }
+    return true;
 }
 
 // ==================== 1. 热门城市 ====================
@@ -30,7 +132,11 @@ void WeatherApi::onCitiesReply()
         return;
     }
 
-    QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    QByteArray raw = reply->readAll();
+    // 写入缓存
+    if (m_cache) m_cache->saveCities(QString::fromUtf8(raw));
+
+    QJsonObject root = QJsonDocument::fromJson(raw).object();
     qDebug() << "[onCitiesReply] response:" << root;
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
@@ -103,6 +209,7 @@ void WeatherApi::onSearchReply()
 // ==================== 2. 实时天气 ====================
 void WeatherApi::fetchNowWeather(const QString &cityId)
 {
+    if (tryLoadCache(cityId, "now")) return;
     doGet(QString("%1/now?cityId=%2").arg(BASE, cityId), SLOT(onNowWeatherReply()));
 }
 
@@ -117,7 +224,20 @@ void WeatherApi::onNowWeatherReply()
         return;
     }
 
-    QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    QByteArray raw = reply->readAll();
+    // 提取 cityId 并写入缓存
+    QJsonObject rootTmp = QJsonDocument::fromJson(raw).object();
+    if (rootTmp["code"].toInt() == 200 && m_cache) {
+        // 从请求 URL 中提取 cityId
+        QString url = reply->request().url().toString();
+        int idx = url.indexOf("cityId=");
+        if (idx >= 0) {
+            QString cityId = url.mid(idx + 7);
+            m_cache->saveNowWeather(cityId, QString::fromUtf8(raw));
+        }
+    }
+
+    QJsonObject root = QJsonDocument::fromJson(raw).object();
     qDebug() << "[onNowWeatherReply] response:" << root;
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
@@ -146,6 +266,7 @@ void WeatherApi::onNowWeatherReply()
 // ==================== 3. 7天预报 ====================
 void WeatherApi::fetch7DayForecast(const QString &cityId)
 {
+    if (tryLoadCache(cityId, "forecast")) return;
     doGet(QString("%1/7d?cityId=%2").arg(BASE, cityId), SLOT(onForecastReply()));
 }
 
@@ -159,7 +280,18 @@ void WeatherApi::onForecastReply()
         return;
     }
 
-    QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    QByteArray raw = reply->readAll();
+    QJsonObject rootTmp = QJsonDocument::fromJson(raw).object();
+    if (rootTmp["code"].toInt() == 200 && m_cache) {
+        QString url = reply->request().url().toString();
+        int idx = url.indexOf("cityId=");
+        if (idx >= 0) {
+            QString cityId = url.mid(idx + 7);
+            m_cache->saveForecast(cityId, QString::fromUtf8(raw));
+        }
+    }
+
+    QJsonObject root = QJsonDocument::fromJson(raw).object();
     qDebug() << "[onForecastReply] response:" << root;
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
@@ -194,6 +326,7 @@ void WeatherApi::onForecastReply()
 // ==================== 4. 空气质量 ====================
 void WeatherApi::fetchAirQuality(const QString &cityId)
 {
+    if (tryLoadCache(cityId, "air")) return;
     doGet(QString("%1/air?cityId=%2").arg(BASE, cityId), SLOT(onAirQualityReply()));
 }
 
@@ -207,7 +340,18 @@ void WeatherApi::onAirQualityReply()
         return;
     }
 
-    QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    QByteArray raw = reply->readAll();
+    QJsonObject rootTmp = QJsonDocument::fromJson(raw).object();
+    if (rootTmp["code"].toInt() == 200 && m_cache) {
+        QString url = reply->request().url().toString();
+        int idx = url.indexOf("cityId=");
+        if (idx >= 0) {
+            QString cityId = url.mid(idx + 7);
+            m_cache->saveAirQuality(cityId, QString::fromUtf8(raw));
+        }
+    }
+
+    QJsonObject root = QJsonDocument::fromJson(raw).object();
     qDebug() << "[onAirQualityReply] response:" << root;
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
@@ -235,6 +379,7 @@ void WeatherApi::onAirQualityReply()
 // ==================== 5. 生活指数 ====================
 void WeatherApi::fetchWeatherIndex(const QString &cityId)
 {
+    if (tryLoadCache(cityId, "index")) return;
     doGet(QString("%1/index?cityId=%2").arg(BASE, cityId), SLOT(onWeatherIndexReply()));
 }
 
@@ -248,7 +393,18 @@ void WeatherApi::onWeatherIndexReply()
         return;
     }
 
-    QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    QByteArray raw = reply->readAll();
+    QJsonObject rootTmp = QJsonDocument::fromJson(raw).object();
+    if (rootTmp["code"].toInt() == 200 && m_cache) {
+        QString url = reply->request().url().toString();
+        int idx = url.indexOf("cityId=");
+        if (idx >= 0) {
+            QString cityId = url.mid(idx + 7);
+            m_cache->saveWeatherIndex(cityId, QString::fromUtf8(raw));
+        }
+    }
+
+    QJsonObject root = QJsonDocument::fromJson(raw).object();
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
         reply->deleteLater();
@@ -272,6 +428,7 @@ void WeatherApi::onWeatherIndexReply()
 // ==================== 6. 灾害预警 ====================
 void WeatherApi::fetchWeatherWarning(const QString &cityId)
 {
+    if (tryLoadCache(cityId, "warning")) return;
     doGet(QString("%1/warning?cityId=%2").arg(BASE, cityId), SLOT(onWeatherWarningReply()));
 }
 
@@ -285,7 +442,18 @@ void WeatherApi::onWeatherWarningReply()
         return;
     }
 
-    QJsonObject root = QJsonDocument::fromJson(reply->readAll()).object();
+    QByteArray raw = reply->readAll();
+    QJsonObject rootTmp = QJsonDocument::fromJson(raw).object();
+    if (rootTmp["code"].toInt() == 200 && m_cache) {
+        QString url = reply->request().url().toString();
+        int idx = url.indexOf("cityId=");
+        if (idx >= 0) {
+            QString cityId = url.mid(idx + 7);
+            m_cache->saveWeatherWarning(cityId, QString::fromUtf8(raw));
+        }
+    }
+
+    QJsonObject root = QJsonDocument::fromJson(raw).object();
     if (root["code"].toInt() != 200) {
         emit errorOccurred(root["msg"].toString());
         reply->deleteLater();

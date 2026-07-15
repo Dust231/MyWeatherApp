@@ -4,6 +4,7 @@
 #include <QQuickStyle>
 #include <QtWebView>
 #include "weatherapi.h"
+#include "weathercache.h"
 #include "speechhelper.h"
 
 int main(int argc, char *argv[])
@@ -14,8 +15,10 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
-    // 将 WeatherApi 注册为 QML 上下文属性，QML 中通过 weatherApi 访问
+    // 创建 SQLite 缓存并注入 WeatherApi
+    WeatherCache cache;
     WeatherApi api;
+    api.setCache(&cache);
     engine.rootContext()->setContextProperty("weatherApi", &api);
 
     // 将 SpeechHelper 注册为 QML 上下文属性，QML 中通过 speechHelper 访问

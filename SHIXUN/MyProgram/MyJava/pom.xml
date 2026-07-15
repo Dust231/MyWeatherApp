@@ -32,6 +32,13 @@
             <artifactId>httpclient5</artifactId>
         </dependency>
 
+        <!-- pinyin4j：中文转拼音，用于和风Geo API城市搜索 -->
+        <dependency>
+            <groupId>com.belerweb</groupId>
+            <artifactId>pinyin4j</artifactId>
+            <version>2.5.1</version>
+        </dependency>
+
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

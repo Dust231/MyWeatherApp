@@ -1157,6 +1157,7 @@ Page {
                             color: themeManager ? themeManager.accentColor : "#4CAF50"
                             visible: !!mainPage.airQuality.aqi
                         }
+                        Item { Layout.preferredWidth: 8 }
                         Rectangle {
                             width: aqiTagLabel.width + 16
                             height: 24
@@ -1242,6 +1243,8 @@ Page {
                 }
             }
         }
+
+        Item { width: parent.width; height: 12 }
 
         // ========== 降水预报板块 ==========
         Item {
@@ -1385,6 +1388,182 @@ Page {
                             spacing: 4
                             Rectangle { width: 10; height: 10; radius: 2; color: themeManager ? themeManager.accentLight : "#4FC3F7" }
                             Label { text: "降水量 (mm)"; font.pixelSize: 10; color: themeManager ? themeManager.subTextColor : "#6a7585" }
+                        }
+                    }
+                }
+            }
+        }
+        Item { width: parent.width; height: 12 }
+
+        // ========== 生活指数板块 ==========
+        Item {
+            width: parent.width
+            height: lifeIndexColumn.implicitHeight + 36
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                radius: 16
+                color: themeManager ? themeManager.cardColor : "#2a3240"
+                border.color: themeManager ? themeManager.borderColor : "#3a4555"
+                border.width: 1
+
+                ColumnLayout {
+                    id: lifeIndexColumn
+                    anchors.fill: parent
+                    anchors.margins: 18
+                    spacing: 10
+
+                    // 标题行
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: "生活指数"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: themeManager ? themeManager.textColor : "#FFFFFF"
+                            font.letterSpacing: 1
+                        }
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: "今日生活参考"
+                            font.pixelSize: 12
+                            color: themeManager ? themeManager.subTextColor : "#6a7585"
+                        }
+                    }
+
+                    // 指数网格（2列布局）
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: 10
+                        rowSpacing: 10
+                        visible: mainPage.weatherIndex && mainPage.weatherIndex.length > 0
+
+                        Repeater {
+                            model: mainPage.weatherIndex
+                            delegate: Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 80
+                                radius: 12
+                                color: themeManager ? themeManager.bgColor : "#212730"
+                                border.color: themeManager ? themeManager.borderColor : "#3a4555"
+                                border.width: 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 8
+
+                                    // 指数图标
+                                    Rectangle {
+                                        Layout.preferredWidth: 40
+                                        Layout.preferredHeight: 40
+                                        radius: 20
+                                        color: {
+                                            var n = modelData.name || "";
+                                            if (n.indexOf("穿衣") >= 0) return "#E8874A";
+                                            if (n.indexOf("洗车") >= 0) return "#4FC3F7";
+                                            if (n.indexOf("紫外线") >= 0 || n.indexOf("防晒") >= 0) return "#FFD54F";
+                                            if (n.indexOf("运动") >= 0) return "#66BB6A";
+                                            if (n.indexOf("旅游") >= 0) return "#AB47BC";
+                                            if (n.indexOf("过敏") >= 0) return "#EF5350";
+                                            if (n.indexOf("舒适度") >= 0) return "#42A5F5";
+                                            if (n.indexOf("感冒") >= 0) return "#26C6DA";
+                                            if (n.indexOf("空气污染") >= 0) return "#78909C";
+                                            return themeManager ? themeManager.accentColor : "#4A90D9";
+                                        }
+
+                                        Label {
+                                            anchors.centerIn: parent
+                                            text: {
+                                                var n = modelData.name || "";
+                                                if (n.indexOf("穿衣") >= 0) return "👔";
+                                                if (n.indexOf("洗车") >= 0) return "🚗";
+                                                if (n.indexOf("紫外线") >= 0 || n.indexOf("防晒") >= 0) return "☀";
+                                                if (n.indexOf("运动") >= 0) return "🏃";
+                                                if (n.indexOf("旅游") >= 0) return "✈";
+                                                if (n.indexOf("过敏") >= 0) return "🤧";
+                                                if (n.indexOf("舒适度") >= 0) return "🛋";
+                                                if (n.indexOf("感冒") >= 0) return "🤒";
+                                                if (n.indexOf("空气污染") >= 0) return "🌫";
+                                                return "📋";
+                                            }
+                                            font.pixelSize: 18
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        spacing: 2
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 6
+                                            Label {
+                                                text: modelData.name || ""
+                                                font.pixelSize: 13
+                                                font.bold: true
+                                                color: themeManager ? themeManager.textColor : "#FFFFFF"
+                                            }
+                                            Rectangle {
+                                                width: levelTag.width + 10
+                                                height: 18
+                                                radius: 9
+                                                color: themeManager ? themeManager.accentColor : "#4A90D9"
+                                                visible: !!modelData.level
+                                                Label {
+                                                    id: levelTag
+                                                    anchors.centerIn: parent
+                                                    text: modelData.level || ""
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                    color: "#FFFFFF"
+                                                }
+                                            }
+                                        }
+
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: modelData.text || ""
+                                            font.pixelSize: 11
+                                            color: themeManager ? themeManager.subTextColor : "#8899AA"
+                                            maximumLineCount: 2
+                                            elide: Text.ElideRight
+                                            wrapMode: Text.Wrap
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 无数据提示
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 100
+                        Layout.alignment: Qt.AlignCenter
+                        spacing: 6
+                        visible: !mainPage.weatherIndex || mainPage.weatherIndex.length === 0
+
+                        Label {
+                            text: "📋"
+                            font.pixelSize: 28
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Label {
+                            text: "生活指数数据暂不可用"
+                            font.pixelSize: 14
+                            color: themeManager ? themeManager.subTextColor : "#6a7585"
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                        Label {
+                            text: "当前 API 套餐可能不支持生活指数查询"
+                            font.pixelSize: 11
+                            color: themeManager ? themeManager.subTextColor : "#4a5565"
+                            Layout.alignment: Qt.AlignHCenter
                         }
                     }
                 }
